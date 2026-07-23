@@ -1,0 +1,2065 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1B7A4D">
+<title>House Hunting Kenya · Mikindani, Mombasa</title>
+<meta name="description" content="Find and list rental houses in Mikindani, Mombasa and beyond.">
+
+<!-- ============================================================
+     PWA MANIFEST (inlined as a data URI so this stays one file)
+     ============================================================ -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+
+<!-- Fonts: Fraunces (display, real-estate signage warmth) + Inter (UI) + IBM Plex Mono (prices/data, ledger feel) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<!-- Firebase (compat SDKs, kept simple for a single-file app).
+     Note: Firebase Storage is intentionally NOT used — it requires the
+     Blaze (pay-as-you-go) plan. Instead, property photos are resized and
+     compressed in the browser, then stored as base64 strings directly in
+     Firestore, which works on the free Spark plan. See compressImage()
+     and the properties/{id}/images subcollection further down. -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+<style>
+/* =====================================================================
+   DESIGN TOKENS
+   Palette: forest green primary, warm white surfaces, ledger-mono prices.
+   The brief pins the palette (green & white) and mood (modern, minimal,
+   elegant) — this is executed through a "listing tag" signature motif
+   (the notched tag shape on cards / hero / login) rather than a generic
+   dashboard look, and rent figures set in mono like a rent ledger.
+   ===================================================================== */
+:root{
+  --bg:#FAFAF7;
+  --surface:#FFFFFF;
+  --surface-2:#F1F4F0;
+  --text:#12261C;
+  --muted:#66786F;
+  --primary:#1B7A4D;
+  --primary-dark:#145C3A;
+  --accent:#3FA66B;
+  --border:#E2E7DF;
+  --warning:#B8791C;
+  --warning-bg:#FBF2E2;
+  --danger:#B23A2E;
+  --danger-bg:#FBEAE7;
+  --ok-bg:#E7F3EA;
+  --radius:16px;
+  --radius-sm:10px;
+  --shadow:0 10px 30px rgba(18,38,28,.08);
+  --shadow-sm:0 2px 10px rgba(18,38,28,.06);
+  --font-display:'Fraunces',serif;
+  --font-body:'Inter',sans-serif;
+  --font-mono:'IBM Plex Mono',monospace;
+}
+html[data-theme="dark"]{
+  --bg:#0E1712;
+  --surface:#15201A;
+  --surface-2:#1B2820;
+  --text:#EAF2EC;
+  --muted:#8FA398;
+  --primary:#3FA66B;
+  --primary-dark:#2E8757;
+  --accent:#57C685;
+  --border:#26332B;
+  --warning:#E3AE5E;
+  --warning-bg:#2B2417;
+  --danger:#E08072;
+  --danger-bg:#2B1C1A;
+  --ok-bg:#16281E;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+  --shadow-sm:0 2px 10px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-body);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  transition:background .2s ease,color .2s ease;
+}
+h1,h2,h3,h4{font-family:var(--font-display);font-weight:600;margin:0 0 6px;letter-spacing:-.01em;}
+p{margin:0 0 10px;color:var(--muted);}
+a{color:inherit;}
+button,input,select,textarea{font-family:var(--font-body);font-size:15px;color:var(--text);}
+button{cursor:pointer;}
+::selection{background:var(--accent);color:#fff;}
+
+/* Focus visibility (accessibility floor) */
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important;transition:none !important;}
+}
+
+.hidden{display:none !important;}
+.container{max-width:1080px;margin:0 auto;padding:0 18px;}
+
+/* ---------- Top bar ---------- */
+.topbar{
+  position:sticky;top:0;z-index:40;
+  background:var(--bg);border-bottom:1px solid var(--border);
+  backdrop-filter:blur(6px);
+}
+.topbar-inner{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;max-width:1080px;margin:0 auto;}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:19px;}
+.brand-mark{
+  width:34px;height:34px;border-radius:8px;background:var(--primary);
+  display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;
+  clip-path:polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+}
+.brand small{display:block;font-family:var(--font-body);font-weight:500;font-size:11px;color:var(--muted);letter-spacing:.02em;}
+.topbar-actions{display:flex;align-items:center;gap:8px;}
+.icon-btn{
+  width:38px;height:38px;border-radius:50%;border:1px solid var(--border);
+  background:var(--surface);display:flex;align-items:center;justify-content:center;
+  position:relative;
+}
+.icon-btn svg{width:18px;height:18px;}
+.badge-dot{
+  position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;
+  background:var(--danger);border:2px solid var(--bg);
+}
+.user-chip{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;border:1px solid var(--border);background:var(--surface);}
+.user-chip .avatar{width:26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;font-weight:600;font-size:12px;display:flex;align-items:center;justify-content:center;}
+.user-chip span{font-size:13px;font-weight:600;}
+
+/* dropdown */
+.dropdown{position:relative;}
+.dropdown-panel{
+  position:absolute;right:0;top:46px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-sm);box-shadow:var(--shadow);min-width:260px;padding:8px;z-index:50;
+}
+.dropdown-panel .dd-item{padding:10px 12px;border-radius:8px;font-size:13.5px;cursor:pointer;}
+.dropdown-panel .dd-item:hover{background:var(--surface-2);}
+.dropdown-panel hr{border:none;border-top:1px solid var(--border);margin:6px 0;}
+.notif-item{padding:10px 12px;border-radius:8px;font-size:13px;border-bottom:1px solid var(--border);}
+.notif-item:last-child{border-bottom:none;}
+.notif-time{color:var(--muted);font-size:11px;margin-top:2px;}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:12px 18px;border-radius:999px;border:1px solid transparent;
+  font-weight:600;font-size:14.5px;transition:transform .12s ease, opacity .12s ease;
+}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-dark);}
+.btn-outline{background:transparent;border-color:var(--border);color:var(--text);}
+.btn-outline:hover{border-color:var(--primary);}
+.btn-ghost{background:transparent;color:var(--muted);padding:8px 10px;}
+.btn-danger{background:var(--danger-bg);color:var(--danger);}
+.btn-block{width:100%;}
+.btn-sm{padding:8px 14px;font-size:13px;}
+.btn[disabled]{opacity:.5;pointer-events:none;}
+
+/* ---------- Forms ---------- */
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em;}
+.field input,.field select,.field textarea{
+  width:100%;padding:12px 13px;border-radius:var(--radius-sm);border:1px solid var(--border);
+  background:var(--surface);color:var(--text);
+}
+.field textarea{resize:vertical;min-height:80px;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);}
+.field-hint{font-size:12px;color:var(--muted);margin-top:4px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.check-row{display:flex;align-items:center;gap:8px;padding:10px 0;font-size:14px;}
+.check-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;}
+
+/* ---------- Cards / surfaces ---------- */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow-sm);}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
+.stat-card .num{font-family:var(--font-mono);font-size:26px;font-weight:600;}
+.stat-card .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:16px 0;}
+
+/* ---------- Auth screen ---------- */
+.auth-wrap{min-height:calc(100vh - 60px);display:flex;align-items:center;justify-content:center;padding:30px 18px;}
+.auth-card{max-width:420px;width:100%;}
+.auth-hero{text-align:center;margin-bottom:22px;}
+.tag-badge{
+  display:inline-flex;align-items:center;gap:6px;background:var(--ok-bg);color:var(--primary-dark);
+  padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;margin-bottom:14px;
+  clip-path:polygon(6% 0,100% 0,100% 100%,6% 100%,0 50%);padding-left:18px;
+}
+html[data-theme="dark"] .tag-badge{color:var(--accent);}
+.auth-hero h1{font-size:30px;}
+.role-toggle{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.role-opt{border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px 10px;text-align:center;background:var(--surface);}
+.role-opt.active{border-color:var(--primary);background:var(--ok-bg);}
+.role-opt svg{width:22px;height:22px;margin-bottom:6px;}
+.role-opt .rt{font-weight:600;font-size:13.5px;}
+.role-opt .rs{font-size:11.5px;color:var(--muted);}
+.auth-switch{text-align:center;margin-top:14px;font-size:13.5px;color:var(--muted);}
+.auth-switch a{color:var(--primary);font-weight:600;cursor:pointer;text-decoration:none;}
+.error-box{background:var(--danger-bg);color:var(--danger);padding:10px 13px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:12px;}
+.success-box{background:var(--ok-bg);color:var(--primary-dark);padding:10px 13px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:12px;}
+html[data-theme="dark"] .success-box{color:var(--accent);}
+
+/* ---------- Payment screen ---------- */
+.till-box{
+  background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+  color:#fff;border-radius:var(--radius);padding:22px;margin:16px 0;position:relative;overflow:hidden;
+}
+.till-box::after{content:'';position:absolute;right:-30px;top:-30px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.08);}
+.till-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;opacity:.85;}
+.till-num{font-family:var(--font-mono);font-size:30px;font-weight:600;letter-spacing:.02em;margin:4px 0 10px;}
+.till-amt{font-size:14px;opacity:.95;}
+.status-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:600;}
+.status-pending{background:var(--warning-bg);color:var(--warning);}
+.status-active{background:var(--ok-bg);color:var(--primary-dark);}
+html[data-theme="dark"] .status-active{color:var(--accent);}
+.status-rejected,.status-expired{background:var(--danger-bg);color:var(--danger);}
+
+/* ---------- Nav tabs ---------- */
+.tabbar{display:flex;gap:6px;overflow-x:auto;padding:14px 0 10px;border-bottom:1px solid var(--border);margin-bottom:16px;scrollbar-width:none;}
+.tabbar::-webkit-scrollbar{display:none;}
+.tab-btn{flex-shrink:0;padding:9px 16px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font-size:13.5px;font-weight:600;color:var(--muted);white-space:nowrap;}
+.tab-btn.active{background:var(--text);color:var(--bg);border-color:var(--text);}
+
+/* ---------- Property grid / cards ---------- */
+.prop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
+.prop-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;
+  box-shadow:var(--shadow-sm);display:flex;flex-direction:column;
+}
+.prop-img{height:170px;background:var(--surface-2) center/cover no-repeat;position:relative;}
+.prop-img .noimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;}
+.prop-tag{
+  position:absolute;top:10px;left:0;background:var(--primary);color:#fff;font-size:11px;font-weight:700;
+  padding:5px 12px 5px 10px;clip-path:polygon(0 0,100% 0,88% 100%,0 100%);
+}
+.prop-tag.occupied{background:var(--danger);}
+.save-fab{
+  position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:50%;
+  background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;border:none;
+}
+.save-fab svg{width:16px;height:16px;}
+.save-fab.saved svg{fill:var(--danger);stroke:var(--danger);}
+.prop-body{padding:14px;display:flex;flex-direction:column;gap:6px;flex:1;}
+.prop-title{font-weight:600;font-size:15.5px;font-family:var(--font-body);}
+.prop-loc{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:4px;}
+.prop-rent{font-family:var(--font-mono);font-weight:600;font-size:19px;color:var(--primary-dark);}
+html[data-theme="dark"] .prop-rent{color:var(--accent);}
+.prop-rent small{font-family:var(--font-body);color:var(--muted);font-weight:500;font-size:11.5px;}
+.chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;}
+.chip{background:var(--surface-2);border-radius:999px;padding:4px 10px;font-size:11px;color:var(--muted);font-weight:600;}
+.prop-actions{display:flex;gap:8px;margin-top:8px;}
+
+/* ---------- Filter panel ---------- */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+.filter-bar input[type="text"],.filter-bar select{
+  padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);
+}
+.search-input{flex:1;min-width:180px;}
+
+/* ---------- Modal ---------- */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(10,18,14,.55);z-index:100;display:flex;
+  align-items:flex-end;justify-content:center;
+}
+@media(min-width:720px){.modal-overlay{align-items:center;}}
+.modal{
+  background:var(--surface);width:100%;max-width:640px;max-height:92vh;overflow-y:auto;
+  border-radius:20px 20px 0 0;padding:22px;position:relative;
+}
+@media(min-width:720px){.modal{border-radius:var(--radius);}}
+.modal-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;background:var(--surface-2);border:none;display:flex;align-items:center;justify-content:center;}
+.gallery{display:flex;gap:8px;overflow-x:auto;margin:12px 0;border-radius:var(--radius-sm);}
+.gallery img{width:220px;height:150px;object-fit:cover;border-radius:var(--radius-sm);flex-shrink:0;}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin:14px 0;font-size:13.5px;}
+.detail-grid .dl{color:var(--muted);}
+.detail-grid .dv{font-weight:600;}
+
+/* ---------- Table (admin/reports) ---------- */
+table.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+table.data-table th{text-align:left;padding:10px;color:var(--muted);border-bottom:1px solid var(--border);font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;}
+table.data-table td{padding:10px;border-bottom:1px solid var(--border);}
+.table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);}
+
+/* ---------- Empty state ---------- */
+.empty-state{text-align:center;padding:50px 20px;color:var(--muted);}
+.empty-state svg{width:44px;height:44px;margin-bottom:10px;opacity:.5;}
+
+/* ---------- Toast ---------- */
+#toast-host{position:fixed;bottom:20px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:200;pointer-events:none;}
+.toast{background:var(--text);color:var(--bg);padding:11px 18px;border-radius:999px;font-size:13.5px;font-weight:600;box-shadow:var(--shadow);}
+
+/* ---------- Misc ---------- */
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.mt-16{margin-top:16px;}
+.mt-24{margin-top:24px;}
+.flex-between{display:flex;align-items:center;justify-content:space-between;}
+.text-muted{color:var(--muted);font-size:13px;}
+.spinner{width:22px;height:22px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:30px auto;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.report-only{display:none;}
+@media print{
+  .topbar,.tabbar,.filter-bar,.no-print{display:none !important;}
+  body{background:#fff;color:#000;}
+  .report-only{display:block !important;}
+}
+@media(max-width:640px){
+  .field-row{grid-template-columns:1fr;}
+  .detail-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- =========================================================
+     TOP BAR
+     ========================================================= -->
+<header class="topbar hidden" id="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+      </span>
+      <div>
+        House Hunting KE
+        <small id="location-context">Mikindani · Mombasa</small>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="theme-toggle" title="Toggle dark mode">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <div class="dropdown" id="notif-dropdown">
+        <button class="icon-btn" id="notif-btn" title="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 003.4 0"/></svg>
+          <span class="badge-dot hidden" id="notif-badge"></span>
+        </button>
+        <div class="dropdown-panel hidden" id="notif-panel" style="max-height:340px;overflow-y:auto;"></div>
+      </div>
+      <div class="dropdown" id="user-dropdown">
+        <button class="user-chip" id="user-chip-btn">
+          <span class="avatar" id="user-avatar">?</span>
+          <span id="user-name-label">—</span>
+        </button>
+        <div class="dropdown-panel hidden" id="user-panel">
+          <div class="dd-item" id="dd-profile"><b id="dd-role-label">Role</b><div class="text-muted" id="dd-sub-status">—</div></div>
+          <hr>
+          <div class="dd-item" id="dd-renew">Renew / Manage subscription</div>
+          <div class="dd-item" id="dd-logout">Log out</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main id="app-root">
+  <div class="spinner" id="boot-spinner"></div>
+</main>
+
+<div id="toast-host"></div>
+<div id="modal-host"></div>
+
+<!-- =========================================================
+     TEMPLATES (cloned into #app-root by router.js below)
+     ========================================================= -->
+
+<!-- ---------- AUTH SCREEN ---------- -->
+<template id="tpl-auth">
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-hero">
+      <span class="tag-badge">🏷️ Mikindani, Mombasa</span>
+      <h1>Find home. List home.</h1>
+      <p>Kenya's rental marketplace, starting on the ground in Mikindani.</p>
+    </div>
+    <div class="card">
+      <div id="auth-error" class="hidden"></div>
+
+      <!-- toggled: login / register -->
+      <div id="auth-login-form">
+        <div class="field"><label>Full name</label><input type="text" id="li-name" placeholder="e.g. Amina Hassan" autocomplete="name"></div>
+        <div class="field"><label>Password</label><input type="password" id="li-pass" placeholder="••••••••" autocomplete="current-password"></div>
+        <button class="btn btn-primary btn-block" id="btn-login">Log in</button>
+        <p class="auth-switch">New here? <a id="go-register">Create an account</a></p>
+      </div>
+
+      <div id="auth-register-form" class="hidden">
+        <div class="role-toggle">
+          <div class="role-opt active" data-role="tenant">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+            <div class="rt">Tenant</div><div class="rs">Search & rent</div>
+          </div>
+          <div class="role-opt" data-role="landlord">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+            <div class="rt">Landlord</div><div class="rs">List & manage</div>
+          </div>
+        </div>
+        <div class="field"><label>Full name</label><input type="text" id="rg-name" placeholder="e.g. Amina Hassan"></div>
+        <div class="field"><label>Password</label><input type="password" id="rg-pass" placeholder="At least 6 characters"></div>
+        <button class="btn btn-primary btn-block" id="btn-register">Create account</button>
+        <p class="auth-switch">Already registered? <a id="go-login">Log in</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+</template>
+
+<!-- ---------- PAYMENT / SUBSCRIPTION SCREEN ---------- -->
+<template id="tpl-payment">
+<div class="container" style="padding-top:24px;padding-bottom:60px;">
+  <h2>Activate your subscription</h2>
+  <p id="pay-role-copy" class="text-muted"></p>
+
+  <div id="pay-status-banner"></div>
+
+  <div class="till-box">
+    <div class="till-label">Pay via M-Pesa Till Number</div>
+    <div class="till-num" id="till-number">3266806</div>
+    <div class="till-amt">Amount: <b id="pay-amount">KES —</b></div>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:15px;">How to pay</h3>
+    <p class="text-muted" style="font-size:13.5px;">
+      Go to M-Pesa → Lipa na M-Pesa → Buy Goods and Services → enter Till Number
+      <b id="pay-instructions-till">3266806</b> → enter the amount above → confirm.
+      Then submit your transaction code below for verification.
+    </p>
+    <div class="field-row">
+      <div class="field"><label>Transaction code</label><input type="text" id="pay-txcode" placeholder="e.g. QFT4X9K2LZ"></div>
+      <div class="field"><label>Payment date</label><input type="date" id="pay-date"></div>
+    </div>
+    <button class="btn btn-primary btn-block" id="btn-submit-payment">Submit payment</button>
+    <p class="field-hint" style="margin-top:10px;">Your subscription activates once an administrator verifies your transaction code. This is usually quick — you'll get a notification either way.</p>
+  </div>
+
+  <div class="mt-24">
+    <h3 style="font-size:15px;">Your payment history</h3>
+    <div id="pay-history" class="table-wrap"></div>
+  </div>
+</div>
+</template>
+
+<!-- ---------- LANDLORD DASHBOARD ---------- -->
+<template id="tpl-landlord">
+<div class="container" style="padding-top:20px;padding-bottom:60px;">
+  <div class="section-head">
+    <div>
+      <h2 style="margin-bottom:2px;">My properties</h2>
+      <p class="text-muted" style="margin:0;font-size:13px;" id="ll-sub-line">—</p>
+    </div>
+    <button class="btn btn-primary" id="btn-add-property">+ Add property</button>
+  </div>
+
+  <div class="stat-grid" id="ll-stats"></div>
+
+  <div class="tabbar">
+    <button class="tab-btn active" data-tab="properties">Properties</button>
+    <button class="tab-btn" data-tab="inquiries">Inquiries</button>
+    <button class="tab-btn" data-tab="saved">Saved by tenants</button>
+  </div>
+
+  <div id="ll-tab-properties"><div class="prop-grid" id="ll-prop-grid"></div></div>
+  <div id="ll-tab-inquiries" class="hidden"><div id="ll-inquiries-list"></div></div>
+  <div id="ll-tab-saved" class="hidden"><div class="prop-grid" id="ll-saved-grid"></div></div>
+</div>
+</template>
+
+<!-- ---------- TENANT DASHBOARD ---------- -->
+<template id="tpl-tenant">
+<div class="container" style="padding-top:20px;padding-bottom:60px;">
+  <div class="section-head">
+    <h2>Find your next home</h2>
+  </div>
+
+  <div class="tabbar">
+    <button class="tab-btn active" data-tab="search">Search</button>
+    <button class="tab-btn" data-tab="saved">Saved houses</button>
+  </div>
+
+  <div id="tn-tab-search">
+    <div class="filter-bar card" style="padding:12px;">
+      <input type="text" class="search-input" id="f-estate" placeholder="Search estate or area…">
+      <select id="f-type">
+        <option value="">Any house type</option>
+        <option>Bedsitter</option><option>Single Room</option><option>One Bedroom</option>
+        <option>Two Bedroom</option><option>Three Bedroom</option><option>Four Bedroom</option><option>Maisonette</option>
+      </select>
+      <select id="f-rent">
+        <option value="">Any rent range</option>
+        <option value="0-5000">Under 5,000</option>
+        <option value="5000-10000">5,000 – 10,000</option>
+        <option value="10000-20000">10,000 – 20,000</option>
+        <option value="20000-40000">20,000 – 40,000</option>
+        <option value="40000-999999">Above 40,000</option>
+      </select>
+      <select id="f-water"><option value="">Water: any</option><option value="yes">Available</option></select>
+      <select id="f-parking"><option value="">Parking: any</option><option value="yes">Available</option></select>
+      <select id="f-security"><option value="">Security: any</option><option value="yes">Available</option></select>
+      <select id="f-wifi"><option value="">Wi‑Fi: any</option><option value="yes">Available</option></select>
+      <select id="f-pets"><option value="">Pets: any</option><option value="yes">Allowed</option></select>
+      <button class="btn btn-outline btn-sm" id="btn-clear-filters">Clear</button>
+    </div>
+    <p class="text-muted" id="tn-result-count" style="margin:12px 0 10px;font-size:13px;"></p>
+    <div class="prop-grid" id="tn-prop-grid"></div>
+  </div>
+
+  <div id="tn-tab-saved" class="hidden">
+    <div class="prop-grid" id="tn-saved-grid"></div>
+  </div>
+</div>
+</template>
+
+<!-- ---------- ADMIN DASHBOARD ---------- -->
+<template id="tpl-admin">
+<div class="container" style="padding-top:20px;padding-bottom:60px;">
+  <h2>Admin</h2>
+  <div class="stat-grid" id="ad-stats"></div>
+
+  <div class="tabbar">
+    <button class="tab-btn active" data-tab="payments">Payments</button>
+    <button class="tab-btn" data-tab="properties">Properties</button>
+    <button class="tab-btn" data-tab="users">Users</button>
+    <button class="tab-btn" data-tab="locations">Locations</button>
+    <button class="tab-btn" data-tab="pricing">Pricing</button>
+    <button class="tab-btn" data-tab="reports">Reports</button>
+    <button class="tab-btn" data-tab="announce">Announcements</button>
+  </div>
+
+  <div id="ad-tab-payments"><div class="table-wrap"><table class="data-table" id="ad-payments-table"></table></div></div>
+
+  <div id="ad-tab-properties" class="hidden">
+    <div class="table-wrap"><table class="data-table" id="ad-properties-table"></table></div>
+  </div>
+
+  <div id="ad-tab-users" class="hidden">
+    <div class="table-wrap"><table class="data-table" id="ad-users-table"></table></div>
+  </div>
+
+  <div id="ad-tab-locations" class="hidden">
+    <div class="card">
+      <h3 style="font-size:15px;">Estates / towns available in the app</h3>
+      <p class="text-muted" style="font-size:13px;">Add new counties, towns or estates here — no code changes needed. They immediately appear as options for landlords and in tenant search.</p>
+      <div class="field-row">
+        <div class="field"><label>Estate / area name</label><input type="text" id="loc-estate"></div>
+        <div class="field"><label>Town</label><input type="text" id="loc-town" placeholder="e.g. Mombasa"></div>
+      </div>
+      <button class="btn btn-primary" id="btn-add-location">Add location</button>
+      <div class="chip-row mt-16" id="loc-chip-list"></div>
+    </div>
+  </div>
+
+  <div id="ad-tab-pricing" class="hidden">
+    <div class="card" style="max-width:420px;">
+      <h3 style="font-size:15px;">Subscription pricing & till</h3>
+      <div class="field"><label>Landlord subscription (KES)</label><input type="number" id="price-landlord"></div>
+      <div class="field"><label>Tenant subscription (KES)</label><input type="number" id="price-tenant"></div>
+      <div class="field"><label>M-Pesa Till number</label><input type="text" id="price-till"></div>
+      <button class="btn btn-primary" id="btn-save-pricing">Save changes</button>
+    </div>
+  </div>
+
+  <div id="ad-tab-reports" class="hidden">
+    <p class="text-muted" style="font-size:13px;">Each report opens print-ready — choose "Save as PDF" in the print dialog.</p>
+    <div class="chip-row" id="report-buttons"></div>
+    <div id="report-render" class="report-only card mt-16"></div>
+  </div>
+
+  <div id="ad-tab-announce" class="hidden">
+    <div class="card" style="max-width:480px;">
+      <h3 style="font-size:15px;">Send an announcement</h3>
+      <div class="field"><label>Audience</label>
+        <select id="an-audience"><option value="all">Everyone</option><option value="tenant">Tenants</option><option value="landlord">Landlords</option></select>
+      </div>
+      <div class="field"><label>Message</label><textarea id="an-message" placeholder="e.g. Maintenance window tonight 11pm–12am"></textarea></div>
+      <button class="btn btn-primary" id="btn-send-announce">Send announcement</button>
+    </div>
+  </div>
+</div>
+</template>
+
+<!-- ---------- PROPERTY FORM MODAL (add/edit) ---------- -->
+<template id="tpl-property-form">
+<div class="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" data-close>✕</button>
+    <h3 id="pf-title">Add property</h3>
+    <div class="field"><label>Property title</label><input type="text" id="pf-name" placeholder="e.g. Cozy bedsitter near Mikindani market"></div>
+    <div class="field-row">
+      <div class="field"><label>Estate / area</label><select id="pf-estate"></select></div>
+      <div class="field"><label>GPS location (optional)</label><input type="text" id="pf-gps" placeholder="e.g. -4.0217, 39.6636"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Monthly rent (KES)</label><input type="number" id="pf-rent"></div>
+      <div class="field"><label>Deposit (KES)</label><input type="number" id="pf-deposit"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>House type</label>
+        <select id="pf-type">
+          <option>Bedsitter</option><option>Single Room</option><option>One Bedroom</option>
+          <option>Two Bedroom</option><option>Three Bedroom</option><option>Four Bedroom</option><option>Maisonette</option>
+        </select>
+      </div>
+      <div class="field"><label>Bathrooms</label><input type="number" id="pf-bathrooms" min="0"></div>
+    </div>
+
+    <div class="field"><label>Amenities</label>
+      <div class="check-grid">
+        <label class="check-row"><input type="checkbox" id="pf-water"> Water available</label>
+        <label class="check-row"><input type="checkbox" id="pf-parking"> Parking</label>
+        <label class="check-row"><input type="checkbox" id="pf-electricity"> Electricity</label>
+        <label class="check-row"><input type="checkbox" id="pf-security"> Security</label>
+        <label class="check-row"><input type="checkbox" id="pf-balcony"> Balcony</label>
+        <label class="check-row"><input type="checkbox" id="pf-wifi"> Wi‑Fi</label>
+        <label class="check-row"><input type="checkbox" id="pf-pets"> Pets allowed</label>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field"><label>Nearby school</label><input type="text" id="pf-school"></div>
+      <div class="field"><label>Nearby hospital</label><input type="text" id="pf-hospital"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Nearby shopping centre</label><input type="text" id="pf-shopping"></div>
+      <div class="field"><label>Distance to main road</label><input type="text" id="pf-road" placeholder="e.g. 200m"></div>
+    </div>
+    <div class="field"><label>Description</label><textarea id="pf-desc" placeholder="Describe the house, the estate, what's included…"></textarea></div>
+    <div class="field-row">
+      <div class="field"><label>Contact phone</label><input type="tel" id="pf-phone" placeholder="07xx xxx xxx"></div>
+      <div class="field"><label>WhatsApp number</label><input type="tel" id="pf-whatsapp" placeholder="2547xxxxxxxx"></div>
+    </div>
+    <div class="field"><label>Photos (up to 6)</label><input type="file" id="pf-images" multiple accept="image/*">
+      <div class="field-hint">Photos are automatically resized and compressed in your browser before saving.</div>
+    </div>
+    <div id="pf-image-preview" class="chip-row"></div>
+    <div id="pf-error" class="error-box hidden"></div>
+    <button class="btn btn-primary btn-block mt-16" id="btn-save-property">Save property</button>
+  </div>
+</div>
+</template>
+
+<!-- ---------- PROPERTY DETAIL MODAL ---------- -->
+<template id="tpl-property-detail">
+<div class="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" data-close>✕</button>
+    <div id="pd-gallery" class="gallery"></div>
+    <div class="flex-between">
+      <h3 id="pd-title" style="margin-bottom:0;"></h3>
+      <span class="status-pill" id="pd-status"></span>
+    </div>
+    <p class="prop-loc" id="pd-loc" style="margin:6px 0;"></p>
+    <div class="prop-rent" id="pd-rent"></div>
+    <p class="text-muted" id="pd-deposit" style="font-size:12.5px;"></p>
+    <div class="chip-row" id="pd-chips"></div>
+    <p style="margin-top:12px;" id="pd-desc"></p>
+    <div class="detail-grid" id="pd-details"></div>
+    <p class="text-muted" style="font-size:12.5px;" id="pd-landlord"></p>
+    <div class="prop-actions" style="flex-wrap:wrap;">
+      <a class="btn btn-primary" id="pd-call">📞 Call</a>
+      <a class="btn btn-outline" id="pd-whatsapp">💬 WhatsApp</a>
+      <button class="btn btn-outline" id="pd-request-viewing">Request viewing</button>
+      <button class="btn btn-outline" id="pd-save">☆ Save</button>
+      <button class="btn btn-outline" id="pd-share">↗ Share</button>
+      <button class="btn btn-ghost" id="pd-report">Report listing</button>
+    </div>
+  </div>
+</div>
+</template>
+
+<!-- ---------- SIMPLE PROMPT MODAL ---------- -->
+<template id="tpl-prompt-modal">
+<div class="modal-overlay">
+  <div class="modal" style="max-width:420px;">
+    <button class="modal-close" data-close>✕</button>
+    <h3 id="pm-title"></h3>
+    <p class="text-muted" id="pm-body"></p>
+    <div class="field"><textarea id="pm-input" rows="3"></textarea></div>
+    <button class="btn btn-primary btn-block" id="pm-confirm"></button>
+  </div>
+</div>
+</template>
+
+<script>
+/* =====================================================================
+   FIREBASE CONFIG
+   Replace with your own project's config (Firebase console → Project
+   settings → General → Your apps → SDK setup and configuration).
+   ===================================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyCVwj01ZrF4xfMLCdX481-1dPk7qzyRzuE",
+  authDomain: "house-hunting-efc4d.firebaseapp.com",
+  projectId: "house-hunting-efc4d",
+  storageBucket: "house-hunting-efc4d.firebasestorage.app",
+  messagingSenderId: "587625184017",
+  appId: "1:587625184017:web:375062c011d984a7eb2ab0"
+};
+
+let auth, db, FieldValue, Timestamp;
+try {
+  firebase.initializeApp(firebaseConfig);
+  auth = firebase.auth();
+  db = firebase.firestore();
+  FieldValue = firebase.firestore.FieldValue;
+  Timestamp = firebase.firestore.Timestamp;
+} catch (err) {
+  showFatalError('Could not start Firebase', err.message);
+}
+
+/* Shows a visible, readable error in place of a silent blank screen —
+   used for boot failures (bad config, blocked CDN, offline, etc). */
+function showFatalError(title, message) {
+  document.getElementById('boot-spinner')?.remove();
+  document.getElementById('app-root').innerHTML = `
+    <div class="auth-wrap">
+      <div class="card" style="max-width:480px;">
+        <h2 style="margin-bottom:8px;">${title}</h2>
+        <p style="margin-bottom:16px;">${message || 'Something went wrong while loading the app.'}</p>
+        <p class="text-muted" style="font-size:12.5px;">Common causes: Firestore database not created yet in the
+          Firebase console, Firestore rules not published, or a network/ad-blocker issue.
+          Open your browser's console (F12) for the full error.</p>
+        <button class="btn btn-primary btn-block mt-16" onclick="location.reload()">Reload</button>
+      </div>
+    </div>`;
+}
+
+/* Email domain used to turn "Full Name" into a Firebase Auth identity.
+   Users never see or type an email — they only ever use their name. */
+const AUTH_EMAIL_DOMAIN = "@househunting-kenya.app";
+
+/* =====================================================================
+   SMALL UTILITIES
+   ===================================================================== */
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const root = $('#app-root');
+
+function toast(msg, ms = 3200) {
+  const host = $('#toast-host');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  host.appendChild(el);
+  setTimeout(() => el.remove(), ms);
+}
+
+function slugifyName(name) {
+  return (name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function fmtMoney(n) {
+  n = Number(n) || 0;
+  return 'KES ' + n.toLocaleString('en-KE');
+}
+
+function fmtDate(ts) {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('en-KE', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function timeAgo(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  const s = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return Math.floor(s / 86400) + 'd ago';
+}
+
+function initials(name) {
+  return (name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || '').join('');
+}
+
+/* =====================================================================
+   IMAGE COMPRESSION (no Firebase Storage needed — Spark/free-plan safe)
+   Property photos are resized in-browser and stored as base64 strings
+   directly on Firestore documents. To stay well under Firestore's 1MB
+   per-document limit, this:
+     - caps the longest edge at `maxDim` px
+     - encodes as JPEG and iteratively lowers quality until the base64
+       string is under `maxChars` (defaults keep a single image ~150KB,
+       so a property can safely hold several without approaching 1MB)
+   Returns a base64 data URL string.
+   ===================================================================== */
+function readFileAsImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function compressImage(file, { maxDim = 1000, maxChars = 220000, startQuality = 0.7, minQuality = 0.3 } = {}) {
+  const img = await readFileAsImage(file);
+  let w = img.width, h = img.height;
+  if (w > maxDim || h > maxDim) {
+    const scale = maxDim / Math.max(w, h);
+    w = Math.round(w * scale); h = Math.round(h * scale);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+
+  let quality = startQuality;
+  let dataUrl = canvas.toDataURL('image/jpeg', quality);
+  while (dataUrl.length > maxChars && quality > minQuality) {
+    quality -= 0.1;
+    dataUrl = canvas.toDataURL('image/jpeg', quality);
+  }
+  return dataUrl;
+}
+
+function openModal(templateId) {
+  const tpl = $(templateId);
+  const node = tpl.content.cloneNode(true);
+  const host = $('#modal-host');
+  host.innerHTML = '';
+  host.appendChild(node);
+  const overlay = host.querySelector('.modal-overlay');
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+  host.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeModal));
+  return host;
+}
+function closeModal() { $('#modal-host').innerHTML = ''; }
+
+function promptModal({ title, body, placeholder = '', confirmLabel = 'Submit', onConfirm }) {
+  const host = openModal('#tpl-prompt-modal');
+  $('#pm-title', host).textContent = title;
+  $('#pm-body', host).textContent = body || '';
+  $('#pm-input', host).placeholder = placeholder;
+  const btn = $('#pm-confirm', host);
+  btn.textContent = confirmLabel;
+  btn.addEventListener('click', () => {
+    const val = $('#pm-input', host).value.trim();
+    onConfirm(val);
+    closeModal();
+  });
+}
+
+/* =====================================================================
+   THEME (dark / light)
+   ===================================================================== */
+(function initTheme() {
+  const saved = localStorage.getItem('hhk-theme');
+  const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+})();
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#theme-toggle')) {
+    const cur = document.documentElement.getAttribute('data-theme');
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('hhk-theme', next);
+  }
+});
+
+/* =====================================================================
+   APP STATE
+   ===================================================================== */
+const State = {
+  user: null,          // firebase auth user
+  profile: null,       // Firestore users/{uid} doc data
+  settings: { landlordPrice: 500, tenantPrice: 300, tillNumber: '3266806', estates: [] },
+  estates: [],          // [{estate, town}]
+  savedFilters: {},
+};
+
+/* =====================================================================
+   SETTINGS (pricing, till, estates) — settings/app doc
+   ===================================================================== */
+async function loadSettings() {
+  try {
+    const ref = db.collection('settings').doc('app');
+    const snap = await ref.get();
+    if (!snap.exists) {
+      const initial = {
+        landlordPrice: 500, tenantPrice: 300, tillNumber: '3266806',
+        estates: [{ estate: 'Mikindani', town: 'Mombasa' }]
+      };
+      await ref.set(initial);
+      State.settings = initial;
+    } else {
+      State.settings = Object.assign({ estates: [] }, snap.data());
+    }
+  } catch (err) {
+    console.error('Could not load settings (using defaults):', err);
+    // Keep the hardcoded State.settings defaults so the app can still render.
+  }
+  State.estates = State.settings.estates || [];
+}
+
+/* =====================================================================
+   NOTIFICATIONS
+   ===================================================================== */
+async function createNotification(userId, message) {
+  await db.collection('notifications').add({
+    userId, message, read: false, createdAt: FieldValue.serverTimestamp()
+  });
+}
+
+let unsubNotifs = null;
+function watchNotifications() {
+  if (unsubNotifs) unsubNotifs();
+  if (!State.user) return;
+  unsubNotifs = db.collection('notifications')
+    .where('userId', '==', State.user.uid)
+    .orderBy('createdAt', 'desc')
+    .limit(20)
+    .onSnapshot(snap => {
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderNotifications(items);
+    }, () => {/* index may still be building on first run — ignore */});
+}
+
+function renderNotifications(items) {
+  const panel = $('#notif-panel');
+  const badge = $('#notif-badge');
+  const unread = items.filter(i => !i.read).length;
+  badge.classList.toggle('hidden', unread === 0);
+  if (!items.length) {
+    panel.innerHTML = '<div class="notif-item">No notifications yet.</div>';
+    return;
+  }
+  panel.innerHTML = items.map(i => `
+    <div class="notif-item">
+      ${i.message}
+      <div class="notif-time">${timeAgo(i.createdAt)}</div>
+    </div>`).join('');
+}
+
+/* =====================================================================
+   AUTH: REGISTER / LOGIN / LOGOUT
+   Users authenticate with "Full name" + password only. Internally we
+   map their name to a unique handle -> synthetic email, stored in the
+   `handles` collection so login can look the email back up.
+   ===================================================================== */
+async function registerUser(name, password, role) {
+  name = name.trim();
+  if (name.length < 3) throw new Error('Please enter your full name.');
+  if (password.length < 6) throw new Error('Password must be at least 6 characters.');
+
+  const handle = slugifyName(name);
+  if (!handle) throw new Error('Please enter a valid name.');
+
+  const handleRef = db.collection('handles').doc(handle);
+  const handleSnap = await handleRef.get();
+  if (handleSnap.exists) {
+    throw new Error('That name is already registered. Try adding a middle name, or log in instead.');
+  }
+
+  const email = handle + AUTH_EMAIL_DOMAIN;
+  const cred = await auth.createUserWithEmailAndPassword(email, password);
+  const uid = cred.user.uid;
+
+  const batch = db.batch();
+  batch.set(db.collection('users').doc(uid), {
+    name, role, subscriptionStatus: 'none', subscriptionExpiry: null,
+    suspended: false, createdAt: FieldValue.serverTimestamp(),
+    savedProperties: []
+  });
+  batch.set(handleRef, { email, uid });
+  await batch.commit();
+  return uid;
+}
+
+async function loginUser(name, password) {
+  name = name.trim();
+  const handle = slugifyName(name);
+  if (!handle) throw new Error('Please enter your full name.');
+  const handleSnap = await db.collection('handles').doc(handle).get();
+  if (!handleSnap.exists) throw new Error('We could not find an account with that name.');
+  const { email } = handleSnap.data();
+  await auth.signInWithEmailAndPassword(email, password);
+}
+
+function logout() {
+  auth.signOut();
+}
+
+/* =====================================================================
+   ROUTER — decides which screen to show based on auth + profile state
+   ===================================================================== */
+async function route() {
+  try {
+    if (!State.user) {
+      $('#topbar').classList.add('hidden');
+      renderAuthScreen();
+      return;
+    }
+
+    // Load / refresh profile
+    const snap = await db.collection('users').doc(State.user.uid).get();
+    if (!snap.exists) { logout(); return; }
+    State.profile = snap.data();
+
+    if (State.profile.suspended) {
+      toast('Your account has been suspended. Contact the administrator.');
+      logout();
+      return;
+    }
+
+    $('#topbar').classList.remove('hidden');
+    updateTopbarForUser();
+    watchNotifications();
+
+    if (State.profile.role === 'admin') {
+      renderAdminScreen();
+      return;
+    }
+
+    const status = State.profile.subscriptionStatus;
+    const expired = status === 'active' && State.profile.subscriptionExpiry &&
+      State.profile.subscriptionExpiry.toDate() < new Date();
+    if (expired) {
+      await db.collection('users').doc(State.user.uid).update({ subscriptionStatus: 'expired' });
+      State.profile.subscriptionStatus = 'expired';
+    }
+
+    if (State.profile.subscriptionStatus !== 'active') {
+      renderPaymentScreen();
+    } else if (State.profile.role === 'landlord') {
+      renderLandlordScreen();
+    } else {
+      renderTenantScreen();
+    }
+  } catch (err) {
+    console.error('Routing failed:', err);
+    showFatalError('Something went wrong', err.message ||
+      'Could not load your account. Check the browser console for details.');
+  }
+}
+
+function updateTopbarForUser() {
+  $('#user-avatar').textContent = initials(State.profile.name);
+  $('#user-name-label').textContent = State.profile.name;
+  $('#dd-role-label').textContent = State.profile.role.charAt(0).toUpperCase() + State.profile.role.slice(1);
+  $('#dd-sub-status').textContent = State.profile.role === 'admin'
+    ? 'Administrator access'
+    : 'Subscription: ' + (State.profile.subscriptionStatus || 'none');
+  $('#dd-renew').classList.toggle('hidden', State.profile.role === 'admin');
+}
+
+if (auth) {
+  auth.onAuthStateChanged(async (user) => {
+    State.user = user;
+    await loadSettings();
+    route();
+  });
+}
+
+/* Top bar dropdown wiring (delegated once) */
+document.addEventListener('click', (e) => {
+  const notifBtn = e.target.closest('#notif-btn');
+  const userBtn = e.target.closest('#user-chip-btn');
+  if (notifBtn) { $('#notif-panel').classList.toggle('hidden'); $('#user-panel').classList.add('hidden'); }
+  else if (userBtn) { $('#user-panel').classList.toggle('hidden'); $('#notif-panel').classList.add('hidden'); }
+  else if (!e.target.closest('.dropdown')) {
+    $('#notif-panel')?.classList.add('hidden');
+    $('#user-panel')?.classList.add('hidden');
+  }
+  if (e.target.closest('#dd-logout')) logout();
+  if (e.target.closest('#dd-renew')) renderPaymentScreen();
+});
+
+/* =====================================================================
+   SCREEN: AUTH
+   ===================================================================== */
+function renderAuthScreen() {
+  root.innerHTML = '';
+  root.appendChild($('#tpl-auth').content.cloneNode(true));
+  let selectedRole = 'tenant';
+
+  $('#go-register').addEventListener('click', () => {
+    $('#auth-login-form').classList.add('hidden');
+    $('#auth-register-form').classList.remove('hidden');
+    $('#auth-error').classList.add('hidden');
+  });
+  $('#go-login').addEventListener('click', () => {
+    $('#auth-register-form').classList.add('hidden');
+    $('#auth-login-form').classList.remove('hidden');
+    $('#auth-error').classList.add('hidden');
+  });
+
+  $$('.role-opt').forEach(opt => opt.addEventListener('click', () => {
+    $$('.role-opt').forEach(o => o.classList.remove('active'));
+    opt.classList.add('active');
+    selectedRole = opt.dataset.role;
+  }));
+
+  function showError(msg) {
+    const box = $('#auth-error');
+    box.textContent = msg;
+    box.className = 'error-box';
+  }
+
+  $('#btn-login').addEventListener('click', async () => {
+    const btn = $('#btn-login'); btn.disabled = true;
+    try {
+      await loginUser($('#li-name').value, $('#li-pass').value);
+    } catch (err) {
+      showError(err.message || 'Could not log in.');
+    } finally { btn.disabled = false; }
+  });
+
+  $('#btn-register').addEventListener('click', async () => {
+    const btn = $('#btn-register'); btn.disabled = true;
+    try {
+      await registerUser($('#rg-name').value, $('#rg-pass').value, selectedRole);
+      toast('Account created! Let\'s activate your subscription.');
+    } catch (err) {
+      showError(err.message || 'Could not register.');
+    } finally { btn.disabled = false; }
+  });
+}
+
+/* =====================================================================
+   SCREEN: PAYMENT
+   ===================================================================== */
+async function renderPaymentScreen() {
+  root.innerHTML = '';
+  root.appendChild($('#tpl-payment').content.cloneNode(true));
+
+  const role = State.profile.role;
+  const amount = role === 'landlord' ? State.settings.landlordPrice : State.settings.tenantPrice;
+  $('#pay-role-copy').textContent = role === 'landlord'
+    ? 'Landlords need an active subscription to list and manage rental properties.'
+    : 'Tenants need an active subscription to search, save and contact landlords.';
+  $('#till-number').textContent = State.settings.tillNumber;
+  $('#pay-instructions-till').textContent = State.settings.tillNumber;
+  $('#pay-amount').textContent = fmtMoney(amount);
+  $('#pay-date').value = new Date().toISOString().slice(0, 10);
+
+  const banner = $('#pay-status-banner');
+  const status = State.profile.subscriptionStatus;
+  if (status === 'pending') {
+    banner.innerHTML = `<div class="success-box">Payment submitted — <span class="status-pill status-pending">Pending verification</span></div>`;
+  } else if (status === 'rejected') {
+    banner.innerHTML = `<div class="error-box">Your last payment was rejected. Please check the details and resubmit.</div>`;
+  } else if (status === 'expired') {
+    banner.innerHTML = `<div class="error-box">Your subscription has expired. Renew to continue.</div>`;
+  }
+
+  $('#btn-submit-payment').addEventListener('click', async () => {
+    const txcode = $('#pay-txcode').value.trim();
+    const date = $('#pay-date').value;
+    if (!txcode) { toast('Enter your M-Pesa transaction code.'); return; }
+    const btn = $('#btn-submit-payment'); btn.disabled = true;
+    try {
+      await db.collection('payments').add({
+        userId: State.user.uid, userName: State.profile.name, role,
+        amount, transactionCode: txcode, paymentDate: date,
+        status: 'pending', createdAt: FieldValue.serverTimestamp()
+      });
+      await db.collection('users').doc(State.user.uid).update({ subscriptionStatus: 'pending' });
+      toast('Payment submitted for verification.');
+      route();
+    } catch (err) {
+      toast('Could not submit payment: ' + err.message);
+    } finally { btn.disabled = false; }
+  });
+
+  const histSnap = await db.collection('payments')
+    .where('userId', '==', State.user.uid)
+    .orderBy('createdAt', 'desc').limit(10).get();
+  const rows = histSnap.docs.map(d => d.data());
+  $('#pay-history').innerHTML = rows.length ? `
+    <table class="data-table">
+      <tr><th>Date</th><th>Amount</th><th>Code</th><th>Status</th></tr>
+      ${rows.map(r => `<tr>
+        <td>${r.paymentDate || fmtDate(r.createdAt)}</td>
+        <td>${fmtMoney(r.amount)}</td>
+        <td>${r.transactionCode}</td>
+        <td><span class="status-pill status-${r.status}">${r.status}</span></td>
+      </tr>`).join('')}
+    </table>` : '<div class="empty-state">No payments submitted yet.</div>';
+}
+
+/* =====================================================================
+   SCREEN: LANDLORD DASHBOARD
+   ===================================================================== */
+async function renderLandlordScreen() {
+  root.innerHTML = '';
+  root.appendChild($('#tpl-landlord').content.cloneNode(true));
+
+  const expiry = State.profile.subscriptionExpiry ? fmtDate(State.profile.subscriptionExpiry) : '—';
+  $('#ll-sub-line').textContent = `Subscription active · expires ${expiry}`;
+
+  $$('.tab-btn').forEach(tab => tab.addEventListener('click', () => {
+    $$('.tab-btn').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    ['properties', 'inquiries', 'saved'].forEach(t =>
+      $('#ll-tab-' + t).classList.toggle('hidden', t !== tab.dataset.tab));
+  }));
+
+  $('#btn-add-property').addEventListener('click', () => openPropertyForm());
+
+  const snap = await db.collection('properties')
+    .where('landlordId', '==', State.user.uid).get();
+  const props = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  const totalViews = props.reduce((a, p) => a + (p.views || 0), 0);
+  const savedCount = props.reduce((a, p) => a + ((p.savedBy || []).length), 0);
+  $('#ll-stats').innerHTML = statCard(props.length, 'Listings') +
+    statCard(props.filter(p => p.status === 'Available').length, 'Available') +
+    statCard(totalViews, 'Total views') +
+    statCard(savedCount, 'Times saved');
+
+  const grid = $('#ll-prop-grid');
+  if (!props.length) {
+    grid.innerHTML = emptyState('No properties yet', 'Add your first listing to start receiving inquiries.');
+  } else {
+    grid.innerHTML = props.map(p => landlordPropertyCard(p)).join('');
+  }
+  wireLandlordCardActions(props);
+
+  // Inquiries
+  const propIds = props.map(p => p.id);
+  const inqBox = $('#ll-inquiries-list');
+  if (!propIds.length) {
+    inqBox.innerHTML = emptyState('No inquiries yet', 'Inquiries appear here once tenants contact you.');
+  } else {
+    const inqSnap = await db.collection('inquiries')
+      .where('landlordId', '==', State.user.uid)
+      .orderBy('createdAt', 'desc').limit(50).get();
+    const inquiries = inqSnap.docs.map(d => d.data());
+    inqBox.innerHTML = inquiries.length ? inquiries.map(i => `
+      <div class="card" style="margin-bottom:10px;">
+        <div class="flex-between"><b>${i.propertyTitle || 'Property'}</b><span class="text-muted" style="font-size:12px;">${timeAgo(i.createdAt)}</span></div>
+        <p style="margin:6px 0 0;font-size:13.5px;">${i.type === 'viewing' ? 'Requested a viewing' : 'Contacted you'} — ${i.tenantName}</p>
+      </div>`).join('') : emptyState('No inquiries yet', 'Inquiries appear here once tenants contact you.');
+  }
+
+  // Saved-by-tenants grid
+  const savedGrid = $('#ll-saved-grid');
+  const savedProps = props.filter(p => (p.savedBy || []).length > 0);
+  savedGrid.innerHTML = savedProps.length ? savedProps.map(p => landlordPropertyCard(p)).join('')
+    : emptyState('No saves yet', 'Properties tenants save will show up here.');
+  wireLandlordCardActions(savedProps);
+}
+
+function statCard(num, label) {
+  return `<div class="stat-card"><div class="num">${num}</div><div class="label">${label}</div></div>`;
+}
+function emptyState(title, sub) {
+  return `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><h3 style="font-size:15px;">${title}</h3><p>${sub}</p></div>`;
+}
+
+function landlordPropertyCard(p) {
+  const img = p.thumbnail || '';
+  return `<div class="prop-card" data-id="${p.id}">
+    <div class="prop-img" style="${img ? `background-image:url('${img}')` : ''}">
+      ${!img ? '<div class="noimg">No photo</div>' : ''}
+      <span class="prop-tag ${p.status === 'Occupied' ? 'occupied' : ''}">${p.status}</span>
+      ${!p.approved ? '<span class="prop-tag" style="left:auto;right:0;background:var(--warning);clip-path:polygon(12% 0,100% 0,100% 100%,12% 100%,0 50%);">Pending review</span>' : ''}
+    </div>
+    <div class="prop-body">
+      <div class="prop-title">${p.title}</div>
+      <div class="prop-loc">📍 ${p.estate}</div>
+      <div class="prop-rent">${fmtMoney(p.rent)}<small>/mo</small></div>
+      <div class="chip-row"><span class="chip">${p.views || 0} views</span><span class="chip">${(p.savedBy || []).length} saved</span></div>
+      <div class="prop-actions">
+        <button class="btn btn-outline btn-sm" data-action="edit">Edit</button>
+        <button class="btn btn-outline btn-sm" data-action="toggle">${p.status === 'Available' ? 'Mark occupied' : 'Mark available'}</button>
+        <button class="btn btn-danger btn-sm" data-action="delete">Delete</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function wireLandlordCardActions(props) {
+  $$('.prop-card').forEach(card => {
+    const p = props.find(x => x.id === card.dataset.id);
+    if (!p) return;
+    card.querySelector('[data-action="edit"]')?.addEventListener('click', () => openPropertyForm(p));
+    card.querySelector('[data-action="toggle"]')?.addEventListener('click', async () => {
+      const next = p.status === 'Available' ? 'Occupied' : 'Available';
+      await db.collection('properties').doc(p.id).update({ status: next });
+      toast('Marked as ' + next);
+      renderLandlordScreen();
+    });
+    card.querySelector('[data-action="delete"]')?.addEventListener('click', () => {
+      promptModal({
+        title: 'Delete this property?',
+        body: 'This cannot be undone. Type DELETE to confirm.',
+        placeholder: 'DELETE',
+        confirmLabel: 'Delete permanently',
+        onConfirm: async (val) => {
+          if (val !== 'DELETE') { toast('Cancelled — confirmation text did not match.'); return; }
+          await db.collection('properties').doc(p.id).delete();
+          toast('Property deleted.');
+          renderLandlordScreen();
+        }
+      });
+    });
+  });
+}
+
+/* ---------- Add / edit property form ---------- */
+async function openPropertyForm(existing = null) {
+  const host = openModal('#tpl-property-form');
+  $('#pf-title', host).textContent = existing ? 'Edit property' : 'Add property';
+
+  const estateSelect = $('#pf-estate', host);
+  estateSelect.innerHTML = State.estates.map(e => `<option value="${e.estate}">${e.estate}, ${e.town}</option>`).join('')
+    || '<option value="Mikindani">Mikindani, Mombasa</option>';
+
+  // Existing photos (loaded from the properties/{id}/images subcollection),
+  // photos just picked in this session, and ids of existing photos to delete on save.
+  let existingImages = [];
+  let newImages = [];      // [{ thumb, data }] — compressed, not yet written
+  let removedIds = [];
+
+  if (existing) {
+    const imgSnap = await db.collection('properties').doc(existing.id)
+      .collection('images').orderBy('createdAt', 'asc').get();
+    existingImages = imgSnap.docs.map(d => ({ id: d.id, thumb: d.data().thumb }));
+  }
+
+  const totalCount = () => (existingImages.length - removedIds.length) + newImages.length;
+
+  const previewImages = () => {
+    const remainingExisting = existingImages.filter(e => !removedIds.includes(e.id));
+    const chips = [
+      ...remainingExisting.map(e => ({ label: 'Photo', onRemove: () => { removedIds.push(e.id); previewImages(); } })),
+      ...newImages.map((img, i) => ({ label: 'New photo', onRemove: () => { newImages.splice(i, 1); previewImages(); } }))
+    ];
+    $('#pf-image-preview', host).innerHTML = chips.map((c, i) =>
+      `<span class="chip">${c.label} ${i + 1} <a data-rmchip="${i}" style="cursor:pointer;color:var(--danger);">✕</a></span>`).join('')
+      || '<span class="text-muted" style="font-size:12px;">No photos yet</span>';
+    $$('[data-rmchip]', host).forEach((a, i) => a.addEventListener('click', () => chips[i].onRemove()));
+  };
+  previewImages();
+
+  $('#pf-images', host).addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = ''; // allow re-selecting the same file later
+    const slots = Math.max(0, 6 - totalCount());
+    if (!slots) { toast('Maximum of 6 photos per listing.'); return; }
+    const toProcess = files.slice(0, slots);
+    if (files.length > slots) toast(`Only ${slots} more photo(s) can be added (max 6).`);
+
+    for (const file of toProcess) {
+      if (!file.type.startsWith('image/')) { toast(`${file.name} isn't an image — skipped.`); continue; }
+      if (file.size > 15 * 1024 * 1024) { toast(`${file.name} is too large — skipped.`); continue; }
+      try {
+        const [thumb, data] = await Promise.all([
+          compressImage(file, { maxDim: 260, maxChars: 30000, startQuality: 0.6, minQuality: 0.25 }),
+          compressImage(file, { maxDim: 1000, maxChars: 220000, startQuality: 0.7, minQuality: 0.3 })
+        ]);
+        newImages.push({ thumb, data });
+      } catch {
+        toast(`Could not process ${file.name}.`);
+      }
+    }
+    previewImages();
+  });
+
+  if (existing) {
+    $('#pf-name', host).value = existing.title || '';
+    estateSelect.value = existing.estate || '';
+    $('#pf-gps', host).value = existing.gps || '';
+    $('#pf-rent', host).value = existing.rent || '';
+    $('#pf-deposit', host).value = existing.deposit || '';
+    $('#pf-type', host).value = existing.houseType || 'Bedsitter';
+    $('#pf-bathrooms', host).value = existing.bathrooms || '';
+    $('#pf-water', host).checked = !!existing.water;
+    $('#pf-parking', host).checked = !!existing.parking;
+    $('#pf-electricity', host).checked = !!existing.electricity;
+    $('#pf-security', host).checked = !!existing.security;
+    $('#pf-balcony', host).checked = !!existing.balcony;
+    $('#pf-wifi', host).checked = !!existing.wifi;
+    $('#pf-pets', host).checked = !!existing.pets;
+    $('#pf-school', host).value = existing.nearbySchool || '';
+    $('#pf-hospital', host).value = existing.nearbyHospital || '';
+    $('#pf-shopping', host).value = existing.nearbyShopping || '';
+    $('#pf-road', host).value = existing.distanceMainRoad || '';
+    $('#pf-desc', host).value = existing.description || '';
+    $('#pf-phone', host).value = existing.phone || '';
+    $('#pf-whatsapp', host).value = existing.whatsapp || '';
+  }
+
+  $('#btn-save-property', host).addEventListener('click', async () => {
+    const title = $('#pf-name', host).value.trim();
+    const rent = Number($('#pf-rent', host).value);
+    const errBox = $('#pf-error', host);
+    if (!title || !rent) {
+      errBox.textContent = 'Property title and monthly rent are required.';
+      errBox.classList.remove('hidden');
+      return;
+    }
+    errBox.classList.add('hidden');
+
+    const btn = $('#btn-save-property', host);
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    try {
+      const propId = existing ? existing.id : db.collection('properties').doc().id;
+
+      const data = {
+        title, estate: estateSelect.value, gps: $('#pf-gps', host).value.trim(),
+        rent, deposit: Number($('#pf-deposit', host).value) || 0,
+        houseType: $('#pf-type', host).value, bathrooms: Number($('#pf-bathrooms', host).value) || 0,
+        water: $('#pf-water', host).checked, parking: $('#pf-parking', host).checked,
+        electricity: $('#pf-electricity', host).checked, security: $('#pf-security', host).checked,
+        balcony: $('#pf-balcony', host).checked, wifi: $('#pf-wifi', host).checked,
+        pets: $('#pf-pets', host).checked,
+        nearbySchool: $('#pf-school', host).value.trim(), nearbyHospital: $('#pf-hospital', host).value.trim(),
+        nearbyShopping: $('#pf-shopping', host).value.trim(), distanceMainRoad: $('#pf-road', host).value.trim(),
+        description: $('#pf-desc', host).value.trim(), phone: $('#pf-phone', host).value.trim(),
+        whatsapp: $('#pf-whatsapp', host).value.trim(),
+        landlordId: State.user.uid, landlordName: State.profile.name,
+      };
+
+      if (existing) {
+        await db.collection('properties').doc(propId).update(data);
+      } else {
+        data.status = 'Available';
+        data.approved = false; // goes into admin moderation queue
+        data.views = 0;
+        data.savedBy = [];
+        data.thumbnail = null;
+        data.dateListed = FieldValue.serverTimestamp();
+        data.createdAt = FieldValue.serverTimestamp();
+        await db.collection('properties').doc(propId).set(data);
+      }
+
+      // Persist photo changes (deletes + new compressed uploads) to the subcollection.
+      const imagesRef = db.collection('properties').doc(propId).collection('images');
+      if (removedIds.length || newImages.length) {
+        const batch = db.batch();
+        removedIds.forEach(id => batch.delete(imagesRef.doc(id)));
+        newImages.forEach(img => batch.set(imagesRef.doc(), {
+          data: img.data, thumb: img.thumb, createdAt: FieldValue.serverTimestamp()
+        }));
+        await batch.commit();
+      }
+
+      // Recompute the card thumbnail from whichever photo is now oldest.
+      const firstImgSnap = await imagesRef.orderBy('createdAt', 'asc').limit(1).get();
+      const thumbnail = firstImgSnap.empty ? null : firstImgSnap.docs[0].data().thumb;
+      await db.collection('properties').doc(propId).update({ thumbnail });
+
+      toast(existing ? 'Property updated.' : 'Property submitted — it will appear once approved by an admin.');
+      closeModal();
+      renderLandlordScreen();
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.classList.remove('hidden');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save property';
+    }
+  });
+}
+
+/* =====================================================================
+   SCREEN: TENANT DASHBOARD
+   ===================================================================== */
+async function renderTenantScreen() {
+  root.innerHTML = '';
+  root.appendChild($('#tpl-tenant').content.cloneNode(true));
+
+  $$('.tab-btn').forEach(tab => tab.addEventListener('click', () => {
+    $$('.tab-btn').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    ['search', 'saved'].forEach(t => $('#tn-tab-' + t).classList.toggle('hidden', t !== tab.dataset.tab));
+    if (tab.dataset.tab === 'saved') loadSavedTenantProperties();
+  }));
+
+  const filterIds = ['f-estate', 'f-type', 'f-rent', 'f-water', 'f-parking', 'f-security', 'f-wifi', 'f-pets'];
+  filterIds.forEach(id => $('#' + id).addEventListener('input', debounce(loadTenantProperties, 250)));
+  $('#btn-clear-filters').addEventListener('click', () => {
+    filterIds.forEach(id => $('#' + id).value = '');
+    loadTenantProperties();
+  });
+
+  await loadTenantProperties();
+}
+
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+async function loadTenantProperties() {
+  const grid = $('#tn-prop-grid');
+  grid.innerHTML = '<div class="spinner"></div>';
+
+  const snap = await db.collection('properties')
+    .where('status', '==', 'Available')
+    .where('approved', '==', true)
+    .get();
+  let props = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  const estateQ = $('#f-estate').value.trim().toLowerCase();
+  const type = $('#f-type').value;
+  const rentRange = $('#f-rent').value;
+  const flags = { water: $('#f-water').value, parking: $('#f-parking').value, security: $('#f-security').value, wifi: $('#f-wifi').value, pets: $('#f-pets').value };
+
+  if (estateQ) props = props.filter(p => (p.estate || '').toLowerCase().includes(estateQ) || (p.title || '').toLowerCase().includes(estateQ));
+  if (type) props = props.filter(p => p.houseType === type);
+  if (rentRange) {
+    const [min, max] = rentRange.split('-').map(Number);
+    props = props.filter(p => p.rent >= min && p.rent <= max);
+  }
+  Object.entries(flags).forEach(([k, v]) => { if (v === 'yes') props = props.filter(p => p[k]); });
+
+  props.sort((a, b) => (b.dateListed?.toMillis?.() || 0) - (a.dateListed?.toMillis?.() || 0));
+
+  $('#tn-result-count').textContent = `${props.length} house${props.length === 1 ? '' : 's'} found`;
+  grid.innerHTML = props.length ? props.map(p => tenantPropertyCard(p)).join('') : emptyState('No matches', 'Try widening your filters.');
+  wireTenantCardActions(props);
+}
+
+async function loadSavedTenantProperties() {
+  const grid = $('#tn-saved-grid');
+  grid.innerHTML = '<div class="spinner"></div>';
+  const saved = State.profile.savedProperties || [];
+  if (!saved.length) { grid.innerHTML = emptyState('No saved houses', 'Tap the heart on a listing to save it here.'); return; }
+  const chunks = [];
+  for (let i = 0; i < saved.length; i += 10) chunks.push(saved.slice(i, i + 10));
+  let props = [];
+  for (const c of chunks) {
+    const snap = await db.collection('properties').where(firebase.firestore.FieldPath.documentId(), 'in', c).get();
+    props = props.concat(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }
+  grid.innerHTML = props.map(p => tenantPropertyCard(p)).join('');
+  wireTenantCardActions(props);
+}
+
+function tenantPropertyCard(p) {
+  const img = p.thumbnail || '';
+  const isSaved = (p.savedBy || []).includes(State.user.uid);
+  return `<div class="prop-card" data-id="${p.id}">
+    <div class="prop-img" style="${img ? `background-image:url('${img}')` : ''}">
+      ${!img ? '<div class="noimg">No photo</div>' : ''}
+      <span class="prop-tag">${p.houseType}</span>
+      <button class="save-fab ${isSaved ? 'saved' : ''}" data-action="save" title="Save">
+        <svg viewBox="0 0 24 24" fill="${isSaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.3-9.5-8.4C.7 9 2 5 6 4.5 8.4 4.2 10.5 5.6 12 8c1.5-2.4 3.6-3.8 6-3.5 4 .5 5.3 4.5 3.5 8.1C19 16.7 12 21 12 21z"/></svg>
+      </button>
+    </div>
+    <div class="prop-body">
+      <div class="prop-title">${p.title}</div>
+      <div class="prop-loc">📍 ${p.estate}</div>
+      <div class="prop-rent">${fmtMoney(p.rent)}<small>/mo</small></div>
+      <div class="chip-row">
+        ${p.water ? '<span class="chip">Water</span>' : ''}${p.parking ? '<span class="chip">Parking</span>' : ''}
+        ${p.wifi ? '<span class="chip">Wi‑Fi</span>' : ''}${p.security ? '<span class="chip">Security</span>' : ''}
+      </div>
+      <button class="btn btn-outline btn-block btn-sm mt-16" data-action="view">View details</button>
+    </div>
+  </div>`;
+}
+
+function wireTenantCardActions(props) {
+  $$('.prop-card').forEach(card => {
+    const p = props.find(x => x.id === card.dataset.id);
+    if (!p) return;
+    card.querySelector('[data-action="view"]')?.addEventListener('click', () => openPropertyDetail(p));
+    card.querySelector('[data-action="save"]')?.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await toggleSaveProperty(p);
+    });
+  });
+}
+
+async function toggleSaveProperty(p) {
+  const uid = State.user.uid;
+  const isSaved = (State.profile.savedProperties || []).includes(p.id);
+  const userRef = db.collection('users').doc(uid);
+  const propRef = db.collection('properties').doc(p.id);
+  if (isSaved) {
+    await userRef.update({ savedProperties: FieldValue.arrayRemove(p.id) });
+    await propRef.update({ savedBy: FieldValue.arrayRemove(uid) });
+    State.profile.savedProperties = (State.profile.savedProperties || []).filter(id => id !== p.id);
+    toast('Removed from saved.');
+  } else {
+    await userRef.update({ savedProperties: FieldValue.arrayUnion(p.id) });
+    await propRef.update({ savedBy: FieldValue.arrayUnion(uid) });
+    State.profile.savedProperties = [...(State.profile.savedProperties || []), p.id];
+    toast('Saved!');
+  }
+  const active = $('.tab-btn.active')?.dataset.tab;
+  active === 'saved' ? loadSavedTenantProperties() : loadTenantProperties();
+}
+
+/* ---------- Property detail modal (tenant view) ---------- */
+async function openPropertyDetail(p) {
+  db.collection('properties').doc(p.id).update({ views: FieldValue.increment(1) }).catch(() => {});
+  const host = openModal('#tpl-property-detail');
+
+  // Show the (already-loaded) thumbnail immediately, then swap in full-size
+  // photos once the images subcollection has loaded.
+  const galleryEl = $('#pd-gallery', host);
+  galleryEl.innerHTML = p.thumbnail
+    ? `<img src="${p.thumbnail}" alt="${p.title}">`
+    : `<div class="empty-state" style="padding:20px;">No photos uploaded yet</div>`;
+
+  db.collection('properties').doc(p.id).collection('images').orderBy('createdAt', 'asc').get()
+    .then(snap => {
+      if (!snap.size) return;
+      galleryEl.innerHTML = snap.docs.map(d => `<img src="${d.data().data}" alt="${p.title}">`).join('');
+    })
+    .catch(() => {/* keep thumbnail if this fails */});
+
+  $('#pd-title', host).textContent = p.title;
+  const statusEl = $('#pd-status', host);
+  statusEl.textContent = p.status;
+  statusEl.className = 'status-pill ' + (p.status === 'Available' ? 'status-active' : 'status-rejected');
+  $('#pd-loc', host).textContent = '📍 ' + p.estate + (p.gps ? ' · ' + p.gps : '');
+  $('#pd-rent', host).innerHTML = fmtMoney(p.rent) + '<small>/mo</small>';
+  $('#pd-deposit', host).textContent = 'Deposit: ' + fmtMoney(p.deposit || 0);
+  $('#pd-desc', host).textContent = p.description || '';
+  $('#pd-landlord', host).textContent = 'Listed by ' + (p.landlordName || 'a landlord') + ' · ' + fmtDate(p.dateListed);
+
+  const chips = [];
+  if (p.water) chips.push('Water');
+  if (p.parking) chips.push('Parking');
+  if (p.electricity) chips.push('Electricity');
+  if (p.security) chips.push('Security');
+  if (p.balcony) chips.push('Balcony');
+  if (p.wifi) chips.push('Wi‑Fi');
+  if (p.pets) chips.push('Pets allowed');
+  $('#pd-chips', host).innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
+
+  $('#pd-details', host).innerHTML = `
+    <div class="dl">House type</div><div class="dv">${p.houseType}</div>
+    <div class="dl">Bathrooms</div><div class="dv">${p.bathrooms || '—'}</div>
+    <div class="dl">Nearby school</div><div class="dv">${p.nearbySchool || '—'}</div>
+    <div class="dl">Nearby hospital</div><div class="dv">${p.nearbyHospital || '—'}</div>
+    <div class="dl">Shopping centre</div><div class="dv">${p.nearbyShopping || '—'}</div>
+    <div class="dl">Distance to main road</div><div class="dv">${p.distanceMainRoad || '—'}</div>
+  `;
+
+  const isSaved = (State.profile.savedProperties || []).includes(p.id);
+  const saveBtn = $('#pd-save', host);
+  saveBtn.textContent = isSaved ? '★ Saved' : '☆ Save';
+  saveBtn.addEventListener('click', async () => { await toggleSaveProperty(p); saveBtn.textContent = (State.profile.savedProperties || []).includes(p.id) ? '★ Saved' : '☆ Save'; });
+
+  $('#pd-call', host).href = 'tel:' + (p.phone || '');
+  const waText = encodeURIComponent(`Hi, I'm interested in "${p.title}" (${p.estate}, ${fmtMoney(p.rent)}/mo) listed on House Hunting Kenya.`);
+  $('#pd-whatsapp', host).href = `https://wa.me/${(p.whatsapp || '').replace(/[^0-9]/g, '')}?text=${waText}`;
+  $('#pd-whatsapp', host).target = '_blank';
+
+  $('#pd-share', host).addEventListener('click', () => {
+    const shareText = `${p.title} — ${fmtMoney(p.rent)}/mo in ${p.estate}. Found on House Hunting Kenya.`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
+  });
+
+  $('#pd-request-viewing', host).addEventListener('click', async () => {
+    await db.collection('inquiries').add({
+      propertyId: p.id, propertyTitle: p.title, landlordId: p.landlordId,
+      tenantId: State.user.uid, tenantName: State.profile.name,
+      type: 'viewing', createdAt: FieldValue.serverTimestamp()
+    });
+    await createNotification(p.landlordId, `${State.profile.name} requested a viewing for "${p.title}".`);
+    toast('Viewing request sent to the landlord.');
+  });
+
+  $('#pd-report', host).addEventListener('click', () => {
+    promptModal({
+      title: 'Report this listing',
+      body: 'Tell us what looks wrong (fake, misleading, already rented, etc).',
+      placeholder: 'Reason for reporting…',
+      confirmLabel: 'Submit report',
+      onConfirm: async (reason) => {
+        await db.collection('reports_flagged').add({
+          propertyId: p.id, propertyTitle: p.title, reportedBy: State.user.uid,
+          reason, createdAt: FieldValue.serverTimestamp()
+        });
+        toast('Thanks — our admin team will review this.');
+      }
+    });
+  });
+}
+
+/* =====================================================================
+   SCREEN: ADMIN DASHBOARD
+   ===================================================================== */
+async function renderAdminScreen() {
+  root.innerHTML = '';
+  root.appendChild($('#tpl-admin').content.cloneNode(true));
+
+  $$('.tab-btn').forEach(tab => tab.addEventListener('click', () => {
+    $$('.tab-btn').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    ['payments', 'properties', 'users', 'locations', 'pricing', 'reports', 'announce'].forEach(t =>
+      $('#ad-tab-' + t).classList.toggle('hidden', t !== tab.dataset.tab));
+  }));
+
+  const [usersSnap, propsSnap, paysSnap] = await Promise.all([
+    db.collection('users').get(),
+    db.collection('properties').get(),
+    db.collection('payments').orderBy('createdAt', 'desc').get()
+  ]);
+  const users = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const properties = propsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const payments = paysSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  $('#ad-stats').innerHTML =
+    statCard(users.filter(u => u.role === 'landlord').length, 'Landlords') +
+    statCard(users.filter(u => u.role === 'tenant').length, 'Tenants') +
+    statCard(users.filter(u => u.subscriptionStatus === 'active').length, 'Active subs') +
+    statCard(properties.length, 'Properties') +
+    statCard(properties.filter(p => p.status === 'Available').length, 'Available') +
+    statCard(payments.filter(p => p.status === 'pending').length, 'Pending payments');
+
+  renderAdminPayments(payments);
+  renderAdminProperties(properties);
+  renderAdminUsers(users);
+  renderAdminLocations();
+  renderAdminPricing();
+  renderAdminReports(users, properties, payments);
+  renderAdminAnnounce();
+}
+
+function renderAdminPayments(payments) {
+  const table = $('#ad-payments-table');
+  table.innerHTML = `<tr><th>User</th><th>Role</th><th>Amount</th><th>Code</th><th>Date</th><th>Status</th><th></th></tr>` +
+    payments.map(p => `<tr data-id="${p.id}">
+      <td>${p.userName}</td><td>${p.role}</td><td>${fmtMoney(p.amount)}</td>
+      <td>${p.transactionCode}</td><td>${p.paymentDate || fmtDate(p.createdAt)}</td>
+      <td><span class="status-pill status-${p.status}">${p.status}</span></td>
+      <td>${p.status === 'pending' ? `
+        <button class="btn btn-primary btn-sm" data-act="approve">Approve</button>
+        <button class="btn btn-danger btn-sm" data-act="reject">Reject</button>` : ''}</td>
+    </tr>`).join('');
+
+  table.querySelectorAll('[data-act="approve"]').forEach(btn => btn.addEventListener('click', async (e) => {
+    const id = e.target.closest('tr').dataset.id;
+    const p = payments.find(x => x.id === id);
+    const expiry = Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 3600 * 1000));
+    await db.collection('payments').doc(id).update({ status: 'approved' });
+    await db.collection('users').doc(p.userId).update({ subscriptionStatus: 'active', subscriptionExpiry: expiry });
+    await createNotification(p.userId, 'Your subscription has been approved and is now active for 30 days.');
+    toast('Payment approved.');
+    renderAdminScreen();
+  }));
+  table.querySelectorAll('[data-act="reject"]').forEach(btn => btn.addEventListener('click', async (e) => {
+    const id = e.target.closest('tr').dataset.id;
+    const p = payments.find(x => x.id === id);
+    await db.collection('payments').doc(id).update({ status: 'rejected' });
+    await db.collection('users').doc(p.userId).update({ subscriptionStatus: 'rejected' });
+    await createNotification(p.userId, 'Your subscription payment was rejected. Please resubmit with a valid transaction code.');
+    toast('Payment rejected.');
+    renderAdminScreen();
+  }));
+}
+
+function renderAdminProperties(properties) {
+  const table = $('#ad-properties-table');
+  table.innerHTML = `<tr><th>Title</th><th>Estate</th><th>Rent</th><th>Landlord</th><th>Status</th><th>Approved</th><th></th></tr>` +
+    properties.map(p => `<tr data-id="${p.id}">
+      <td>${p.title}</td><td>${p.estate}</td><td>${fmtMoney(p.rent)}</td><td>${p.landlordName || '—'}</td>
+      <td>${p.status}</td><td>${p.approved ? 'Yes' : 'No'}</td>
+      <td>
+        ${!p.approved ? '<button class="btn btn-primary btn-sm" data-act="approve">Approve</button>' : ''}
+        <button class="btn btn-danger btn-sm" data-act="remove">Remove</button>
+      </td>
+    </tr>`).join('');
+
+  table.querySelectorAll('[data-act="approve"]').forEach(btn => btn.addEventListener('click', async (e) => {
+    const id = e.target.closest('tr').dataset.id;
+    const p = properties.find(x => x.id === id);
+    await db.collection('properties').doc(id).update({ approved: true });
+    await createNotification(p.landlordId, `Your listing "${p.title}" has been approved and is now live.`);
+    toast('Property approved.');
+    renderAdminScreen();
+  }));
+  table.querySelectorAll('[data-act="remove"]').forEach(btn => btn.addEventListener('click', (e) => {
+    const id = e.target.closest('tr').dataset.id;
+    promptModal({
+      title: 'Remove this listing?', body: 'Use this for fake or fraudulent listings. Type REMOVE to confirm.',
+      placeholder: 'REMOVE', confirmLabel: 'Remove listing',
+      onConfirm: async (val) => {
+        if (val !== 'REMOVE') { toast('Cancelled.'); return; }
+        await db.collection('properties').doc(id).delete();
+        toast('Listing removed.');
+        renderAdminScreen();
+      }
+    });
+  }));
+}
+
+function renderAdminUsers(users) {
+  const table = $('#ad-users-table');
+  table.innerHTML = `<tr><th>Name</th><th>Role</th><th>Subscription</th><th>Joined</th><th></th></tr>` +
+    users.map(u => `<tr data-id="${u.id}">
+      <td>${u.name}</td><td>${u.role}</td>
+      <td><span class="status-pill status-${u.subscriptionStatus || 'none'}">${u.subscriptionStatus || 'none'}</span></td>
+      <td>${fmtDate(u.createdAt)}</td>
+      <td>${u.role !== 'admin' ? `<button class="btn btn-sm ${u.suspended ? 'btn-primary' : 'btn-danger'}" data-act="toggle-suspend">${u.suspended ? 'Unsuspend' : 'Suspend'}</button>` : ''}</td>
+    </tr>`).join('');
+
+  table.querySelectorAll('[data-act="toggle-suspend"]').forEach(btn => btn.addEventListener('click', async (e) => {
+    const id = e.target.closest('tr').dataset.id;
+    const u = users.find(x => x.id === id);
+    await db.collection('users').doc(id).update({ suspended: !u.suspended });
+    toast(u.suspended ? 'User unsuspended.' : 'User suspended.');
+    renderAdminScreen();
+  }));
+}
+
+function renderAdminLocations() {
+  const list = $('#loc-chip-list');
+  list.innerHTML = State.estates.map((e, i) =>
+    `<span class="chip">${e.estate}, ${e.town} <a data-rmloc="${i}" style="cursor:pointer;color:var(--danger);">✕</a></span>`).join('');
+  list.querySelectorAll('[data-rmloc]').forEach(a => a.addEventListener('click', async () => {
+    const idx = Number(a.dataset.rmloc);
+    State.estates.splice(idx, 1);
+    await db.collection('settings').doc('app').update({ estates: State.estates });
+    renderAdminLocations();
+  }));
+
+  $('#btn-add-location').onclick = async () => {
+    const estate = $('#loc-estate').value.trim();
+    const town = $('#loc-town').value.trim() || 'Mombasa';
+    if (!estate) { toast('Enter an estate name.'); return; }
+    State.estates.push({ estate, town });
+    await db.collection('settings').doc('app').update({ estates: State.estates });
+    $('#loc-estate').value = ''; $('#loc-town').value = '';
+    toast('Location added.');
+    renderAdminLocations();
+  };
+}
+
+function renderAdminPricing() {
+  $('#price-landlord').value = State.settings.landlordPrice;
+  $('#price-tenant').value = State.settings.tenantPrice;
+  $('#price-till').value = State.settings.tillNumber;
+  $('#btn-save-pricing').onclick = async () => {
+    const update = {
+      landlordPrice: Number($('#price-landlord').value) || 0,
+      tenantPrice: Number($('#price-tenant').value) || 0,
+      tillNumber: $('#price-till').value.trim()
+    };
+    await db.collection('settings').doc('app').update(update);
+    Object.assign(State.settings, update);
+    toast('Pricing updated.');
+  };
+}
+
+function renderAdminReports(users, properties, payments) {
+  const reports = [
+    { key: 'landlords', label: 'Registered landlords' },
+    { key: 'tenants', label: 'Registered tenants' },
+    { key: 'active-subs', label: 'Active subscriptions' },
+    { key: 'expired-subs', label: 'Expired subscriptions' },
+    { key: 'pending-payments', label: 'Pending payments' },
+    { key: 'by-estate', label: 'Properties by estate' },
+    { key: 'by-rent', label: 'Properties by rent range' },
+    { key: 'available', label: 'Available houses' },
+    { key: 'occupied', label: 'Occupied houses' },
+    { key: 'most-viewed', label: 'Most viewed properties' },
+    { key: 'most-saved', label: 'Most saved properties' },
+    { key: 'new-listings', label: 'New listings (30 days)' },
+    { key: 'monthly-registrations', label: 'Monthly registrations' },
+    { key: 'monthly-revenue', label: 'Monthly subscription revenue' },
+  ];
+  $('#report-buttons').innerHTML = reports.map(r => `<button class="btn btn-outline btn-sm" data-report="${r.key}">${r.label}</button>`).join('');
+  $$('[data-report]').forEach(btn => btn.addEventListener('click', () => buildReport(btn.dataset.report, users, properties, payments)));
+}
+
+function buildReport(key, users, properties, payments) {
+  const box = $('#report-render');
+  let title = '', rows = [];
+  const now = Date.now();
+
+  switch (key) {
+    case 'landlords':
+      title = 'Registered landlords';
+      rows = users.filter(u => u.role === 'landlord').map(u => [u.name, u.subscriptionStatus, fmtDate(u.createdAt)]);
+      buildTable(box, title, ['Name', 'Subscription', 'Joined'], rows); return;
+    case 'tenants':
+      title = 'Registered tenants';
+      rows = users.filter(u => u.role === 'tenant').map(u => [u.name, u.subscriptionStatus, fmtDate(u.createdAt)]);
+      buildTable(box, title, ['Name', 'Subscription', 'Joined'], rows); return;
+    case 'active-subs':
+      title = 'Active subscriptions';
+      rows = users.filter(u => u.subscriptionStatus === 'active').map(u => [u.name, u.role, fmtDate(u.subscriptionExpiry)]);
+      buildTable(box, title, ['Name', 'Role', 'Expires'], rows); return;
+    case 'expired-subs':
+      title = 'Expired subscriptions';
+      rows = users.filter(u => u.subscriptionStatus === 'expired').map(u => [u.name, u.role]);
+      buildTable(box, title, ['Name', 'Role'], rows); return;
+    case 'pending-payments':
+      title = 'Pending payments';
+      rows = payments.filter(p => p.status === 'pending').map(p => [p.userName, fmtMoney(p.amount), p.transactionCode, p.paymentDate]);
+      buildTable(box, title, ['Name', 'Amount', 'Code', 'Date'], rows); return;
+    case 'by-estate': {
+      title = 'Properties by estate';
+      const map = {};
+      properties.forEach(p => map[p.estate] = (map[p.estate] || 0) + 1);
+      rows = Object.entries(map).map(([e, c]) => [e, c]);
+      buildTable(box, title, ['Estate', 'Properties'], rows); return;
+    }
+    case 'by-rent': {
+      title = 'Properties by rent range';
+      const bands = [[0, 5000], [5000, 10000], [10000, 20000], [20000, 40000], [40000, Infinity]];
+      rows = bands.map(([min, max]) => [`${min}–${max === Infinity ? '+' : max}`, properties.filter(p => p.rent >= min && p.rent < max).length]);
+      buildTable(box, title, ['Range (KES)', 'Properties'], rows); return;
+    }
+    case 'available':
+      title = 'Available houses';
+      rows = properties.filter(p => p.status === 'Available').map(p => [p.title, p.estate, fmtMoney(p.rent)]);
+      buildTable(box, title, ['Title', 'Estate', 'Rent'], rows); return;
+    case 'occupied':
+      title = 'Occupied houses';
+      rows = properties.filter(p => p.status === 'Occupied').map(p => [p.title, p.estate, fmtMoney(p.rent)]);
+      buildTable(box, title, ['Title', 'Estate', 'Rent'], rows); return;
+    case 'most-viewed':
+      title = 'Most viewed properties';
+      rows = [...properties].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 20).map(p => [p.title, p.estate, p.views || 0]);
+      buildTable(box, title, ['Title', 'Estate', 'Views'], rows); return;
+    case 'most-saved':
+      title = 'Most saved properties';
+      rows = [...properties].sort((a, b) => ((b.savedBy || []).length) - ((a.savedBy || []).length)).slice(0, 20).map(p => [p.title, p.estate, (p.savedBy || []).length]);
+      buildTable(box, title, ['Title', 'Estate', 'Saves'], rows); return;
+    case 'new-listings':
+      title = 'New listings (last 30 days)';
+      rows = properties.filter(p => p.createdAt && (now - p.createdAt.toMillis()) < 30 * 86400000).map(p => [p.title, p.estate, fmtDate(p.createdAt)]);
+      buildTable(box, title, ['Title', 'Estate', 'Listed'], rows); return;
+    case 'monthly-registrations': {
+      title = 'Monthly registrations';
+      const map = {};
+      users.forEach(u => { if (u.createdAt) { const k = fmtMonth(u.createdAt); map[k] = (map[k] || 0) + 1; } });
+      rows = Object.entries(map);
+      buildTable(box, title, ['Month', 'Registrations'], rows); return;
+    }
+    case 'monthly-revenue': {
+      title = 'Monthly subscription revenue';
+      const map = {};
+      payments.filter(p => p.status === 'approved').forEach(p => { const k = fmtMonth(p.createdAt); map[k] = (map[k] || 0) + Number(p.amount || 0); });
+      rows = Object.entries(map).map(([m, v]) => [m, fmtMoney(v)]);
+      buildTable(box, title, ['Month', 'Revenue'], rows); return;
+    }
+  }
+}
+function fmtMonth(ts) { const d = ts.toDate ? ts.toDate() : new Date(ts); return d.toLocaleDateString('en-KE', { month: 'long', year: 'numeric' }); }
+
+function buildTable(box, title, headers, rows) {
+  box.innerHTML = `<h3>${title}</h3><p class="text-muted" style="font-size:12px;">Generated ${new Date().toLocaleString('en-KE')}</p>
+    <table class="data-table"><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+    ${rows.length ? rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${headers.length}">No data</td></tr>`}
+    </table>`;
+  box.classList.remove('hidden');
+  setTimeout(() => window.print(), 200);
+}
+
+function renderAdminAnnounce() {
+  $('#btn-send-announce').onclick = async () => {
+    const audience = $('#an-audience').value;
+    const message = $('#an-message').value.trim();
+    if (!message) { toast('Write a message first.'); return; }
+    const usersSnap = await (audience === 'all' ? db.collection('users').get() : db.collection('users').where('role', '==', audience).get());
+    const batchArr = usersSnap.docs;
+    for (const doc of batchArr) {
+      await createNotification(doc.id, '📢 ' + message);
+    }
+    toast(`Announcement sent to ${batchArr.length} user(s).`);
+    $('#an-message').value = '';
+  };
+}
+
+/* =====================================================================
+   BOOT
+   ===================================================================== */
+$('#boot-spinner')?.remove();
+</script>
+
+<!-- =====================================================================
+     SETUP NOTES (read before deploying)
+     - This file is a complete, working front end. It deliberately avoids
+       Firebase Storage (which now requires the Blaze/pay-as-you-go plan) —
+       property photos are compressed in the browser and stored as base64
+       strings in Firestore instead, so everything runs on the free Spark
+       plan. To go live:
+       1. Create a Firebase project → enable Authentication (Email/Password)
+          and Firestore. Storage is NOT needed.
+       2. Paste your project's config into `firebaseConfig` above.
+       3. To create the first admin: register normally as any role, then in
+          the Firestore console open users/{that uid} and change `role` to
+          "admin" and `subscriptionStatus` to "active".
+       4. Suggested Firestore rules (tighten before production use):
+
+          rules_version = '2';
+          service cloud.firestore {
+            match /databases/{database}/documents {
+              function isSignedIn() { return request.auth != null; }
+              function isOwner(uid) { return request.auth.uid == uid; }
+              function isAdmin() {
+                return isSignedIn() &&
+                  get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+              }
+              match /users/{uid} {
+                allow read: if isSignedIn();
+                allow create: if isSignedIn() && isOwner(uid);
+                allow update: if isAdmin() || (isOwner(uid) &&
+                  !('role' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                  !('subscriptionStatus' in request.resource.data.diff(resource.data).affectedKeys()));
+              }
+              match /handles/{handle} {
+                allow read: if true;
+                allow create: if isSignedIn();
+              }
+              match /properties/{propertyId} {
+                allow read: if true;
+                allow create: if isSignedIn();
+                allow update, delete: if isAdmin() ||
+                  (isSignedIn() && resource.data.landlordId == request.auth.uid);
+
+                match /images/{imageId} {
+                  allow read: if true;
+                  allow delete: if isAdmin() || (isSignedIn() &&
+                    get(/databases/$(database)/documents/properties/$(propertyId)).data.landlordId == request.auth.uid);
+                  // Extra safety net alongside the client-side compression —
+                  // keeps each photo well under Firestore's 1MB document limit.
+                  allow create: if (isAdmin() || (isSignedIn() &&
+                    get(/databases/$(database)/documents/properties/$(propertyId)).data.landlordId == request.auth.uid))
+                    && request.resource.data.data.size() < 900000;
+                }
+              }
+              match /payments/{id} {
+                allow create: if isSignedIn();
+                allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+                allow update: if isAdmin();
+              }
+              match /inquiries/{id} {
+                allow create: if isSignedIn();
+                allow read: if isAdmin() || (isSignedIn() &&
+                  (resource.data.landlordId == request.auth.uid || resource.data.tenantId == request.auth.uid));
+              }
+              match /notifications/{id} {
+                allow create: if isSignedIn();
+                allow read, update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+              }
+              match /reports_flagged/{id} {
+                allow create: if isSignedIn();
+                allow read: if isAdmin();
+              }
+              match /settings/{id} {
+                allow read: if true;
+                allow write: if isAdmin();
+              }
+            }
+          }
+
+     ===================================================================== -->
+</body>
+</html>
