@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1B7A4D">
+<meta name="theme-color" content="#C2701F">
 <title>House Hunting Kenya · Mikindani, Mombasa</title>
 <meta name="description" content="Find and list rental houses in Mikindani, Mombasa and beyond.">
 
@@ -33,49 +33,64 @@
 /* =====================================================================
    DESIGN TOKENS
    Palette: forest green primary, warm white surfaces, ledger-mono prices.
-   The brief pins the palette (green & white) and mood (modern, minimal,
-   elegant) — this is executed through a "listing tag" signature motif
-   (the notched tag shape on cards / hero / login) rather than a generic
-   dashboard look, and rent figures set in mono like a rent ledger.
+   The palette follows the navy + burnt-orange reference supplied by the
+   client: a warm terracotta as the brand/header colour, a deep navy for
+   the left-hand navigation drawer, and green reserved specifically for
+   "success / available / active" status — not used as the app's general
+   theme colour anymore.
    ===================================================================== */
 :root{
-  --bg:#FAFAF7;
+  --bg:#F2F4F8;
   --surface:#FFFFFF;
-  --surface-2:#F1F4F0;
-  --text:#12261C;
-  --muted:#66786F;
-  --primary:#1B7A4D;
-  --primary-dark:#145C3A;
-  --accent:#3FA66B;
-  --border:#E2E7DF;
+  --surface-2:#E9EDF3;
+  --text:#101B2B;
+  --muted:#5E6C80;
+  --primary:#C2701F;
+  --primary-dark:#9C5A17;
+  --primary-bg:#F7E8D8;
+  --navy:#0F2740;
+  --navy-2:#173A5C;
+  --navy-3:#1F4A73;
+  --on-navy:#EAF0F7;
+  --on-navy-muted:#8EA3BC;
+  --border:#E1E6EE;
   --warning:#B8791C;
   --warning-bg:#FBF2E2;
   --danger:#B23A2E;
   --danger-bg:#FBEAE7;
-  --ok-bg:#E7F3EA;
+  --success:#1E8E5A;
+  --success-dark:#186F46;
+  --success-bg:#E4F3EA;
   --radius:16px;
   --radius-sm:10px;
-  --shadow:0 10px 30px rgba(18,38,28,.08);
-  --shadow-sm:0 2px 10px rgba(18,38,28,.06);
+  --shadow:0 10px 30px rgba(15,39,64,.10);
+  --shadow-sm:0 2px 10px rgba(15,39,64,.07);
   --font-display:'Fraunces',serif;
   --font-body:'Inter',sans-serif;
   --font-mono:'IBM Plex Mono',monospace;
 }
 html[data-theme="dark"]{
-  --bg:#0E1712;
-  --surface:#15201A;
-  --surface-2:#1B2820;
-  --text:#EAF2EC;
-  --muted:#8FA398;
-  --primary:#3FA66B;
-  --primary-dark:#2E8757;
-  --accent:#57C685;
-  --border:#26332B;
+  --bg:#0B1420;
+  --surface:#101E2E;
+  --surface-2:#16283B;
+  --text:#E9EEF5;
+  --muted:#8CA0B6;
+  --primary:#E08A3D;
+  --primary-dark:#C2701F;
+  --primary-bg:#3A2A18;
+  --navy:#0A1826;
+  --navy-2:#153352;
+  --navy-3:#1D4468;
+  --on-navy:#F0F4F9;
+  --on-navy-muted:#7E93AC;
+  --border:#213347;
   --warning:#E3AE5E;
   --warning-bg:#2B2417;
   --danger:#E08072;
   --danger-bg:#2B1C1A;
-  --ok-bg:#16281E;
+  --success:#3FB579;
+  --success-dark:#57C685;
+  --success-bg:#123322;
   --shadow:0 10px 30px rgba(0,0,0,.35);
   --shadow-sm:0 2px 10px rgba(0,0,0,.3);
 }
@@ -95,7 +110,7 @@ p{margin:0 0 10px;color:var(--muted);}
 a{color:inherit;}
 button,input,select,textarea{font-family:var(--font-body);font-size:15px;color:var(--text);}
 button{cursor:pointer;}
-::selection{background:var(--accent);color:#fff;}
+::selection{background:var(--primary);color:#fff;}
 
 /* Focus visibility (accessibility floor) */
 :focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
@@ -111,37 +126,44 @@ button{cursor:pointer;}
 /* ---------- Top bar ---------- */
 .topbar{
   position:sticky;top:0;z-index:40;
-  background:var(--bg);border-bottom:1px solid var(--border);
-  backdrop-filter:blur(6px);
+  background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+  box-shadow:0 2px 14px rgba(0,0,0,.12);
 }
-.topbar-inner{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;max-width:1080px;margin:0 auto;}
-.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:19px;}
+.topbar-inner{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;max-width:1080px;margin:0 auto;gap:8px;}
+.hamburger-btn{
+  width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.28);
+  background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.hamburger-btn svg{width:19px;height:19px;color:#fff;}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:18px;color:#fff;min-width:0;}
+.brand > div{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .brand-mark{
-  width:34px;height:34px;border-radius:8px;background:var(--primary);
+  width:34px;height:34px;border-radius:8px;background:var(--navy);
   display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;
   clip-path:polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
 }
-.brand small{display:block;font-family:var(--font-body);font-weight:500;font-size:11px;color:var(--muted);letter-spacing:.02em;}
-.topbar-actions{display:flex;align-items:center;gap:8px;}
+.brand small{display:block;font-family:var(--font-body);font-weight:500;font-size:11px;color:rgba(255,255,255,.8);letter-spacing:.02em;}
+.topbar-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .icon-btn{
-  width:38px;height:38px;border-radius:50%;border:1px solid var(--border);
-  background:var(--surface);display:flex;align-items:center;justify-content:center;
-  position:relative;
+  width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.28);
+  background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;
+  position:relative;color:#fff;
 }
 .icon-btn svg{width:18px;height:18px;}
 .badge-dot{
   position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;
-  background:var(--danger);border:2px solid var(--bg);
+  background:var(--danger);border:2px solid var(--primary-dark);
 }
-.user-chip{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;border:1px solid var(--border);background:var(--surface);}
-.user-chip .avatar{width:26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;font-weight:600;font-size:12px;display:flex;align-items:center;justify-content:center;}
-.user-chip span{font-size:13px;font-weight:600;}
+.user-chip{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.14);}
+.user-chip .avatar{width:26px;height:26px;border-radius:50%;background:var(--navy);color:var(--on-navy);font-weight:600;font-size:12px;display:flex;align-items:center;justify-content:center;}
+.user-chip span{font-size:13px;font-weight:600;color:#fff;}
 
 /* dropdown */
 .dropdown{position:relative;}
 .dropdown-panel{
   position:absolute;right:0;top:46px;background:var(--surface);border:1px solid var(--border);
   border-radius:var(--radius-sm);box-shadow:var(--shadow);min-width:260px;padding:8px;z-index:50;
+  color:var(--text);
 }
 .dropdown-panel .dd-item{padding:10px 12px;border-radius:8px;font-size:13.5px;cursor:pointer;}
 .dropdown-panel .dd-item:hover{background:var(--surface-2);}
@@ -157,8 +179,8 @@ button{cursor:pointer;}
   font-weight:600;font-size:14.5px;transition:transform .12s ease, opacity .12s ease;
 }
 .btn:active{transform:scale(.97);}
-.btn-primary{background:var(--primary);color:#fff;}
-.btn-primary:hover{background:var(--primary-dark);}
+.btn-primary{background:var(--success);color:#fff;}
+.btn-primary:hover{background:var(--success-dark);}
 .btn-outline{background:transparent;border-color:var(--border);color:var(--text);}
 .btn-outline:hover{border-color:var(--primary);}
 .btn-ghost{background:transparent;color:var(--muted);padding:8px 10px;}
@@ -188,28 +210,64 @@ button{cursor:pointer;}
 .stat-card .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:16px 0;}
 
+/* ---------- Left navigation drawer (navy) ---------- */
+.drawer-overlay{
+  position:fixed;inset:0;background:rgba(6,14,24,.55);z-index:90;
+  opacity:0;pointer-events:none;transition:opacity .22s ease;
+}
+.drawer-overlay.open{opacity:1;pointer-events:auto;}
+.drawer-panel{
+  position:fixed;top:0;left:0;bottom:0;width:82%;max-width:340px;
+  background:var(--navy);color:var(--on-navy);display:flex;flex-direction:column;
+  transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 0 40px rgba(0,0,0,.35);
+}
+.drawer-overlay.open .drawer-panel{transform:translateX(0);}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
+.drawer-head h3{font-size:19px;color:#fff;margin:0;}
+.drawer-close{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;}
+.drawer-nav{flex:1;overflow-y:auto;padding:14px 12px;}
+.drawer-item{
+  display:flex;align-items:center;gap:14px;padding:13px 14px;border-radius:12px;
+  color:var(--on-navy-muted);font-weight:600;font-size:15px;margin-bottom:2px;
+  cursor:pointer;border:none;background:transparent;width:100%;text-align:left;
+}
+.drawer-item svg{width:20px;height:20px;flex-shrink:0;}
+.drawer-item:hover{background:rgba(255,255,255,.06);color:var(--on-navy);}
+.drawer-item.active{background:var(--navy-2);color:#fff;}
+.drawer-item .dr-badge{
+  margin-left:auto;background:var(--danger);color:#fff;font-size:10.5px;font-weight:700;
+  padding:2px 7px;border-radius:999px;
+}
+.drawer-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.08);}
+.drawer-app-name{font-family:var(--font-display);font-weight:600;color:#fff;font-size:14px;}
+.drawer-powered{font-size:11.5px;color:var(--on-navy-muted);margin-top:2px;}
+
+/* ---------- App footer (all authenticated screens) ---------- */
+.app-footer{text-align:center;padding:28px 18px 18px;font-size:12px;color:var(--muted);}
+.app-footer b{color:var(--text);}
+
 /* ---------- Auth screen ---------- */
 .auth-wrap{min-height:calc(100vh - 60px);display:flex;align-items:center;justify-content:center;padding:30px 18px;}
 .auth-card{max-width:420px;width:100%;}
 .auth-hero{text-align:center;margin-bottom:22px;}
 .tag-badge{
-  display:inline-flex;align-items:center;gap:6px;background:var(--ok-bg);color:var(--primary-dark);
+  display:inline-flex;align-items:center;gap:6px;background:var(--primary-bg);color:var(--primary-dark);
   padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;margin-bottom:14px;
   clip-path:polygon(6% 0,100% 0,100% 100%,6% 100%,0 50%);padding-left:18px;
 }
-html[data-theme="dark"] .tag-badge{color:var(--accent);}
+html[data-theme="dark"] .tag-badge{color:var(--primary);}
 .auth-hero h1{font-size:30px;}
 .role-toggle{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
 .role-opt{border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px 10px;text-align:center;background:var(--surface);}
-.role-opt.active{border-color:var(--primary);background:var(--ok-bg);}
+.role-opt.active{border-color:var(--primary);background:var(--primary-bg);}
 .role-opt svg{width:22px;height:22px;margin-bottom:6px;}
 .role-opt .rt{font-weight:600;font-size:13.5px;}
 .role-opt .rs{font-size:11.5px;color:var(--muted);}
 .auth-switch{text-align:center;margin-top:14px;font-size:13.5px;color:var(--muted);}
 .auth-switch a{color:var(--primary);font-weight:600;cursor:pointer;text-decoration:none;}
 .error-box{background:var(--danger-bg);color:var(--danger);padding:10px 13px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:12px;}
-.success-box{background:var(--ok-bg);color:var(--primary-dark);padding:10px 13px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:12px;}
-html[data-theme="dark"] .success-box{color:var(--accent);}
+.success-box{background:var(--success-bg);color:var(--success-dark);padding:10px 13px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:12px;}
 
 /* ---------- Payment screen ---------- */
 .till-box{
@@ -222,15 +280,8 @@ html[data-theme="dark"] .success-box{color:var(--accent);}
 .till-amt{font-size:14px;opacity:.95;}
 .status-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:600;}
 .status-pending{background:var(--warning-bg);color:var(--warning);}
-.status-active{background:var(--ok-bg);color:var(--primary-dark);}
-html[data-theme="dark"] .status-active{color:var(--accent);}
+.status-active{background:var(--success-bg);color:var(--success-dark);}
 .status-rejected,.status-expired{background:var(--danger-bg);color:var(--danger);}
-
-/* ---------- Nav tabs ---------- */
-.tabbar{display:flex;gap:6px;overflow-x:auto;padding:14px 0 10px;border-bottom:1px solid var(--border);margin-bottom:16px;scrollbar-width:none;}
-.tabbar::-webkit-scrollbar{display:none;}
-.tab-btn{flex-shrink:0;padding:9px 16px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font-size:13.5px;font-weight:600;color:var(--muted);white-space:nowrap;}
-.tab-btn.active{background:var(--text);color:var(--bg);border-color:var(--text);}
 
 /* ---------- Property grid / cards ---------- */
 .prop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
@@ -241,10 +292,10 @@ html[data-theme="dark"] .status-active{color:var(--accent);}
 .prop-img{height:170px;background:var(--surface-2) center/cover no-repeat;position:relative;}
 .prop-img .noimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;}
 .prop-tag{
-  position:absolute;top:10px;left:0;background:var(--primary);color:#fff;font-size:11px;font-weight:700;
+  position:absolute;top:10px;left:0;background:var(--navy);color:var(--on-navy);font-size:11px;font-weight:700;
   padding:5px 12px 5px 10px;clip-path:polygon(0 0,100% 0,88% 100%,0 100%);
 }
-.prop-tag.occupied{background:var(--danger);}
+.prop-tag.occupied{background:var(--danger);color:#fff;}
 .save-fab{
   position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:50%;
   background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;border:none;
@@ -254,8 +305,8 @@ html[data-theme="dark"] .status-active{color:var(--accent);}
 .prop-body{padding:14px;display:flex;flex-direction:column;gap:6px;flex:1;}
 .prop-title{font-weight:600;font-size:15.5px;font-family:var(--font-body);}
 .prop-loc{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:4px;}
-.prop-rent{font-family:var(--font-mono);font-weight:600;font-size:19px;color:var(--primary-dark);}
-html[data-theme="dark"] .prop-rent{color:var(--accent);}
+.prop-rent{font-family:var(--font-mono);font-weight:600;font-size:19px;color:var(--navy);}
+html[data-theme="dark"] .prop-rent{color:var(--primary);}
 .prop-rent small{font-family:var(--font-body);color:var(--muted);font-weight:500;font-size:11.5px;}
 .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;}
 .chip{background:var(--surface-2);border-radius:999px;padding:4px 10px;font-size:11px;color:var(--muted);font-weight:600;}
@@ -288,9 +339,19 @@ html[data-theme="dark"] .prop-rent{color:var(--accent);}
 
 /* ---------- Table (admin/reports) ---------- */
 table.data-table{width:100%;border-collapse:collapse;font-size:13px;}
-table.data-table th{text-align:left;padding:10px;color:var(--muted);border-bottom:1px solid var(--border);font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;}
+table.data-table th{text-align:left;padding:10px;color:var(--muted);border-bottom:2px solid var(--primary);font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;}
 table.data-table td{padding:10px;border-bottom:1px solid var(--border);}
 .table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);}
+
+/* ---------- Report / "download" branding ---------- */
+.report-header{
+  background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;
+  padding:18px 20px;border-radius:var(--radius-sm) var(--radius-sm) 0 0;margin:-18px -18px 16px;
+}
+.report-header h3{color:#fff;margin-bottom:2px;}
+.report-header .rh-sub{color:rgba(255,255,255,.72);font-size:12px;}
+.report-footer{margin-top:18px;padding-top:14px;border-top:1px solid var(--border);text-align:center;font-size:11.5px;color:var(--muted);}
+.report-footer b{color:var(--primary);}
 
 /* ---------- Empty state ---------- */
 .empty-state{text-align:center;padding:50px 20px;color:var(--muted);}
@@ -308,11 +369,11 @@ table.data-table td{padding:10px;border-bottom:1px solid var(--border);}
 .text-muted{color:var(--muted);font-size:13px;}
 .spinner{width:22px;height:22px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:30px auto;}
 @keyframes spin{to{transform:rotate(360deg);}}
-.report-only{display:none;}
+.report-only{}
 @media print{
-  .topbar,.tabbar,.filter-bar,.no-print{display:none !important;}
-  body{background:#fff;color:#000;}
-  .report-only{display:block !important;}
+  .topbar,.drawer-overlay,.filter-bar,.app-footer,.no-print{display:none !important;}
+  body{background:#fff;}
+  *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
 }
 @media(max-width:640px){
   .field-row{grid-template-columns:1fr;}
@@ -327,6 +388,9 @@ table.data-table td{padding:10px;border-bottom:1px solid var(--border);}
      ========================================================= -->
 <header class="topbar hidden" id="topbar">
   <div class="topbar-inner">
+    <button class="hamburger-btn" id="hamburger-btn" title="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
     <div class="brand">
       <span class="brand-mark">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
@@ -363,9 +427,25 @@ table.data-table td{padding:10px;border-bottom:1px solid var(--border);}
   </div>
 </header>
 
+<!-- Left-side navigation drawer, used by the landlord, tenant and admin dashboards -->
+<div class="drawer-overlay hidden" id="drawer-overlay">
+  <nav class="drawer-panel" id="drawer-panel">
+    <div class="drawer-head">
+      <h3>Menu</h3>
+      <button class="drawer-close" id="drawer-close">✕</button>
+    </div>
+    <div class="drawer-nav" id="drawer-nav"></div>
+    <div class="drawer-footer">
+      <div class="drawer-app-name">House Hunting Kenya</div>
+      <div class="drawer-powered">Powered by Omlin.</div>
+    </div>
+  </nav>
+</div>
+
 <main id="app-root">
   <div class="spinner" id="boot-spinner"></div>
 </main>
+
 
 <div id="toast-host"></div>
 <div id="modal-host"></div>
@@ -464,16 +544,11 @@ table.data-table td{padding:10px;border-bottom:1px solid var(--border);}
 
   <div class="stat-grid" id="ll-stats"></div>
 
-  <div class="tabbar">
-    <button class="tab-btn active" data-tab="properties">Properties</button>
-    <button class="tab-btn" data-tab="inquiries">Inquiries</button>
-    <button class="tab-btn" data-tab="saved">Saved by tenants</button>
-  </div>
-
   <div id="ll-tab-properties"><div class="prop-grid" id="ll-prop-grid"></div></div>
   <div id="ll-tab-inquiries" class="hidden"><div id="ll-inquiries-list"></div></div>
   <div id="ll-tab-saved" class="hidden"><div class="prop-grid" id="ll-saved-grid"></div></div>
 </div>
+<div class="app-footer">House Hunting Kenya · <b>Powered by Omlin.</b></div>
 </template>
 
 <!-- ---------- TENANT DASHBOARD ---------- -->
@@ -481,11 +556,6 @@ table.data-table td{padding:10px;border-bottom:1px solid var(--border);}
 <div class="container" style="padding-top:20px;padding-bottom:60px;">
   <div class="section-head">
     <h2>Find your next home</h2>
-  </div>
-
-  <div class="tabbar">
-    <button class="tab-btn active" data-tab="search">Search</button>
-    <button class="tab-btn" data-tab="saved">Saved houses</button>
   </div>
 
   <div id="tn-tab-search">
@@ -519,6 +589,7 @@ table.data-table td{padding:10px;border-bottom:1px solid var(--border);}
     <div class="prop-grid" id="tn-saved-grid"></div>
   </div>
 </div>
+<div class="app-footer">House Hunting Kenya · <b>Powered by Omlin.</b></div>
 </template>
 
 <!-- ---------- ADMIN DASHBOARD ---------- -->
@@ -526,16 +597,6 @@ table.data-table td{padding:10px;border-bottom:1px solid var(--border);}
 <div class="container" style="padding-top:20px;padding-bottom:60px;">
   <h2>Admin</h2>
   <div class="stat-grid" id="ad-stats"></div>
-
-  <div class="tabbar">
-    <button class="tab-btn active" data-tab="payments">Payments</button>
-    <button class="tab-btn" data-tab="properties">Properties</button>
-    <button class="tab-btn" data-tab="users">Users</button>
-    <button class="tab-btn" data-tab="locations">Locations</button>
-    <button class="tab-btn" data-tab="pricing">Pricing</button>
-    <button class="tab-btn" data-tab="reports">Reports</button>
-    <button class="tab-btn" data-tab="announce">Announcements</button>
-  </div>
 
   <div id="ad-tab-payments"><div class="table-wrap"><table class="data-table" id="ad-payments-table"></table></div></div>
 
@@ -587,6 +648,7 @@ table.data-table td{padding:10px;border-bottom:1px solid var(--border);}
     </div>
   </div>
 </div>
+<div class="app-footer">House Hunting Kenya · <b>Powered by Omlin.</b></div>
 </template>
 
 <!-- ---------- PROPERTY FORM MODAL (add/edit) ---------- -->
@@ -882,6 +944,7 @@ const State = {
   settings: { landlordPrice: 500, tenantPrice: 300, tillNumber: '3266806', estates: [] },
   estates: [],          // [{estate, town}]
   savedFilters: {},
+  currentNav: null,     // { role, activeKey, onSelect } — drives the left drawer
 };
 
 /* =====================================================================
@@ -1082,9 +1145,100 @@ document.addEventListener('click', (e) => {
 });
 
 /* =====================================================================
+   LEFT NAVIGATION DRAWER — shared by the landlord / tenant / admin
+   dashboards. Each dashboard calls setupDrawerNav(role, activeKey, onSelect)
+   after rendering its content; the hamburger button in the top bar opens
+   whatever nav is currently registered.
+   ===================================================================== */
+const NAV_ICONS = {
+  properties: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+  inquiries: '<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>',
+  saved: '<path d="M12 21s-7-4.3-9.5-8.4C.7 9 2 5 6 4.5 8.4 4.2 10.5 5.6 12 8c1.5-2.4 3.6-3.8 6-3.5 4 .5 5.3 4.5 3.5 8.1C19 16.7 12 21 12 21z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  payments: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.6 3-6 7-6s7 2.4 7 6"/><circle cx="18" cy="9" r="2.6"/><path d="M16 14.2c2.6.4 4.5 2.2 4.5 5.8"/>',
+  locations: '<path d="M12 21s-7-5.6-7-11a7 7 0 0114 0c0 5.4-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+  pricing: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>',
+  reports: '<path d="M4 20V10M12 20V4M20 20v-7"/>',
+  announce: '<path d="M3 11v2a2 2 0 002 2h1l4 4V5L6 9H5a2 2 0 00-2 2z"/><path d="M15 8a4 4 0 010 8"/>',
+};
+
+function drawerNavItems(role) {
+  const I = NAV_ICONS;
+  if (role === 'landlord') return [
+    { key: 'properties', label: 'My Properties', icon: I.properties },
+    { key: 'inquiries', label: 'Inquiries', icon: I.inquiries },
+    { key: 'saved', label: 'Saved by Tenants', icon: I.saved },
+  ];
+  if (role === 'tenant') return [
+    { key: 'search', label: 'Search Houses', icon: I.search },
+    { key: 'saved', label: 'Saved Houses', icon: I.saved },
+  ];
+  if (role === 'admin') return [
+    { key: 'payments', label: 'Payments', icon: I.payments },
+    { key: 'properties', label: 'Properties', icon: I.properties },
+    { key: 'users', label: 'Users', icon: I.users },
+    { key: 'locations', label: 'Locations', icon: I.locations },
+    { key: 'pricing', label: 'Pricing', icon: I.pricing },
+    { key: 'reports', label: 'Reports', icon: I.reports },
+    { key: 'announce', label: 'Announcements', icon: I.announce },
+  ];
+  return [];
+}
+
+/* Registers what the drawer should show right now; called at the top of
+   each renderXScreen(). `onSelect(key)` is invoked when a nav item is tapped. */
+function setupDrawerNav(role, activeKey, onSelect) {
+  State.currentNav = { role, activeKey, onSelect };
+  renderDrawerContents();
+}
+
+function renderDrawerContents() {
+  const nav = State.currentNav;
+  const host = $('#drawer-nav');
+  if (!nav) { host.innerHTML = '<p class="text-muted" style="padding:0 6px;font-size:13px;">Nothing to navigate yet.</p>'; return; }
+  const items = drawerNavItems(nav.role);
+  host.innerHTML = items.map(item => `
+    <button class="drawer-item ${item.key === nav.activeKey ? 'active' : ''}" data-key="${item.key}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${item.icon}</svg>
+      ${item.label}
+    </button>`).join('');
+  $$('.drawer-item', host).forEach(btn => btn.addEventListener('click', () => {
+    const key = btn.dataset.key;
+    State.currentNav.activeKey = key;
+    closeDrawer();
+    nav.onSelect(key);
+  }));
+}
+
+function openDrawer() {
+  renderDrawerContents();
+  $('#drawer-overlay').classList.remove('hidden');
+  requestAnimationFrame(() => $('#drawer-overlay').classList.add('open'));
+}
+function closeDrawer() {
+  $('#drawer-overlay').classList.remove('open');
+  setTimeout(() => $('#drawer-overlay').classList.add('hidden'), 250);
+}
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#hamburger-btn')) openDrawer();
+  if (e.target.closest('#drawer-close')) closeDrawer();
+  if (e.target.id === 'drawer-overlay') closeDrawer();
+});
+
+/* Simple helper: shows the content div matching `key` (id = `${prefix}-tab-${key}`)
+   and hides its siblings — used as the onSelect handler for each dashboard's drawer nav. */
+function makeSectionSwitcher(prefix, keys) {
+  return function (key) {
+    keys.forEach(k => $('#' + prefix + '-tab-' + k)?.classList.toggle('hidden', k !== key));
+  };
+}
+
+/* =====================================================================
    SCREEN: AUTH
    ===================================================================== */
 function renderAuthScreen() {
+  State.currentNav = null;
   root.innerHTML = '';
   root.appendChild($('#tpl-auth').content.cloneNode(true));
   let selectedRole = 'tenant';
@@ -1136,6 +1290,7 @@ function renderAuthScreen() {
    SCREEN: PAYMENT
    ===================================================================== */
 async function renderPaymentScreen() {
+  State.currentNav = null;
   root.innerHTML = '';
   root.appendChild($('#tpl-payment').content.cloneNode(true));
 
@@ -1204,12 +1359,9 @@ async function renderLandlordScreen() {
   const expiry = State.profile.subscriptionExpiry ? fmtDate(State.profile.subscriptionExpiry) : '—';
   $('#ll-sub-line').textContent = `Subscription active · expires ${expiry}`;
 
-  $$('.tab-btn').forEach(tab => tab.addEventListener('click', () => {
-    $$('.tab-btn').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    ['properties', 'inquiries', 'saved'].forEach(t =>
-      $('#ll-tab-' + t).classList.toggle('hidden', t !== tab.dataset.tab));
-  }));
+  const showSection = makeSectionSwitcher('ll', ['properties', 'inquiries', 'saved']);
+  showSection('properties');
+  setupDrawerNav('landlord', 'properties', showSection);
 
   $('#btn-add-property').addEventListener('click', () => openPropertyForm());
 
@@ -1478,12 +1630,11 @@ async function renderTenantScreen() {
   root.innerHTML = '';
   root.appendChild($('#tpl-tenant').content.cloneNode(true));
 
-  $$('.tab-btn').forEach(tab => tab.addEventListener('click', () => {
-    $$('.tab-btn').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    ['search', 'saved'].forEach(t => $('#tn-tab-' + t).classList.toggle('hidden', t !== tab.dataset.tab));
-    if (tab.dataset.tab === 'saved') loadSavedTenantProperties();
-  }));
+  const showTenantSection = makeSectionSwitcher('tn', ['search', 'saved']);
+  setupDrawerNav('tenant', 'search', (key) => {
+    showTenantSection(key);
+    if (key === 'saved') loadSavedTenantProperties();
+  });
 
   const filterIds = ['f-estate', 'f-type', 'f-rent', 'f-water', 'f-parking', 'f-security', 'f-wifi', 'f-pets'];
   filterIds.forEach(id => $('#' + id).addEventListener('input', debounce(loadTenantProperties, 250)));
@@ -1595,7 +1746,7 @@ async function toggleSaveProperty(p) {
     State.profile.savedProperties = [...(State.profile.savedProperties || []), p.id];
     toast('Saved!');
   }
-  const active = $('.tab-btn.active')?.dataset.tab;
+  const active = State.currentNav?.activeKey;
   active === 'saved' ? loadSavedTenantProperties() : loadTenantProperties();
 }
 
@@ -1696,12 +1847,9 @@ async function renderAdminScreen() {
   root.innerHTML = '';
   root.appendChild($('#tpl-admin').content.cloneNode(true));
 
-  $$('.tab-btn').forEach(tab => tab.addEventListener('click', () => {
-    $$('.tab-btn').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    ['payments', 'properties', 'users', 'locations', 'pricing', 'reports', 'announce'].forEach(t =>
-      $('#ad-tab-' + t).classList.toggle('hidden', t !== tab.dataset.tab));
-  }));
+  const showAdminSection = makeSectionSwitcher('ad', ['payments', 'properties', 'users', 'locations', 'pricing', 'reports', 'announce']);
+  showAdminSection('payments');
+  setupDrawerNav('admin', 'payments', showAdminSection);
 
   const [usersSnap, propsSnap, paysSnap] = await Promise.all([
     db.collection('users').get(),
@@ -1954,11 +2102,17 @@ function buildReport(key, users, properties, payments) {
 function fmtMonth(ts) { const d = ts.toDate ? ts.toDate() : new Date(ts); return d.toLocaleDateString('en-KE', { month: 'long', year: 'numeric' }); }
 
 function buildTable(box, title, headers, rows) {
-  box.innerHTML = `<h3>${title}</h3><p class="text-muted" style="font-size:12px;">Generated ${new Date().toLocaleString('en-KE')}</p>
+  box.innerHTML = `
+    <div class="report-header">
+      <h3>${title}</h3>
+      <div class="rh-sub">House Hunting Kenya · Generated ${new Date().toLocaleString('en-KE')}</div>
+    </div>
     <table class="data-table"><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
     ${rows.length ? rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${headers.length}">No data</td></tr>`}
-    </table>`;
+    </table>
+    <div class="report-footer">House Hunting Kenya · Powered by <b>Omlin</b> · <b>Omlin Consultancy</b></div>`;
   box.classList.remove('hidden');
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   setTimeout(() => window.print(), 200);
 }
 
