@@ -49,6 +49,28 @@
     --red:#c0392b;
     --red-bg:#fce8e6;
     --radius:10px;
+    --input-bg:#ffffff;
+    --thead-bg:#f6f8fa;
+    --row-hover:#fbf9f5;
+    --track-bg:#eef1f5;
+    --scrollbar:#c9d0da;
+    --sidebar-w:250px;
+    --sidebar-w-collapsed:76px;
+  }
+  html[data-theme="dark"]{
+    --bg:#0e1620;
+    --card:#182432;
+    --line:#2b3a4c;
+    --text:#e7ebf0;
+    --text-muted:#8fa0b3;
+    --input-bg:#1c2a3a;
+    --thead-bg:#1c2a3a;
+    --row-hover:#1f2f40;
+    --track-bg:#22334480;
+    --scrollbar:#3a4c60;
+    --green-bg:#173628;
+    --amber-bg:#3a2e13;
+    --red-bg:#3a2020;
   }
   *{box-sizing:border-box;}
   body{margin:0;}
@@ -60,11 +82,12 @@
     display:flex;
     min-height:100vh;
     overflow-x:hidden;
+    transition:background .15s ease, color .15s ease;
   }
 
   /* ---------- Sidebar ---------- */
   #sidebar{
-    width:250px;
+    width:var(--sidebar-w);
     flex-shrink:0;
     background:linear-gradient(180deg,var(--navy-dark),var(--navy));
     color:#fff;
@@ -73,7 +96,7 @@
     position:fixed;
     top:0; left:0; bottom:0;
     z-index:40;
-    transition:transform .25s ease;
+    transition:transform .25s ease, width .2s ease;
   }
   #sidebar .brand{
     padding:22px 20px 18px;
@@ -87,9 +110,30 @@
     font-weight:700;font-size:15px;color:var(--gold-soft);
     flex-shrink:0;
   }
-  #sidebar .brand div h1{margin:0;font-size:15.5px;letter-spacing:.2px;color:var(--gold-soft);font-family:Georgia,'Times New Roman',serif;}
-  #sidebar .brand div p{margin:1px 0 0;font-size:11px;color:rgba(255,255,255,.55);}
-  #sidebar nav{padding:14px 12px;flex:1;overflow-y:auto;}
+  #sidebar .brand div h1{margin:0;font-size:15.5px;letter-spacing:.2px;color:var(--gold-soft);font-family:Georgia,'Times New Roman',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #sidebar .brand div p{margin:1px 0 0;font-size:11px;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #sidebar nav{padding:14px 12px;flex:1;overflow-y:auto;overflow-x:hidden;}
+  #sidebar-bottom{padding:8px 12px 4px;border-top:1px solid rgba(255,255,255,.08);}
+  .settings-btn{position:relative;}
+
+  /* ---------- Collapsed sidebar ---------- */
+  body.nav-collapsed #sidebar .brand{padding:20px 0 16px;justify-content:center;}
+  body.nav-collapsed #sidebar .brand .brand-text{display:none;}
+  body.nav-collapsed .nav-item{justify-content:center;padding-left:6px;padding-right:6px;position:relative;}
+  body.nav-collapsed .nav-item .lbl-text,
+  body.nav-collapsed .nav-item .badge,
+  body.nav-collapsed .nav-item .chev{display:none;}
+  body.nav-collapsed .nav-section-label{display:none;}
+  body.nav-collapsed .dropdown-menu{
+    display:none;
+  }
+  body.nav-collapsed .dropdown-menu.open{
+    display:flex;position:absolute;left:calc(var(--sidebar-w) + 6px);
+    background:var(--navy);border:1px solid rgba(255,255,255,.12);
+    border-radius:9px;padding:8px;min-width:210px;box-shadow:0 14px 34px rgba(0,0,0,.35);z-index:70;
+    top:auto;
+  }
+  body.nav-collapsed #reports-toggle{position:relative;}
   .nav-section-label{
     font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;
     color:rgba(255,255,255,.4);margin:14px 10px 6px;
@@ -120,9 +164,10 @@
   }
   .dropdown-item:hover{background:rgba(255,255,255,.08);color:#fff;}
   #sidebar .footer{padding:14px 18px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:rgba(255,255,255,.4);}
+  body.nav-collapsed #sidebar .footer{display:none;}
 
   /* ---------- Main ---------- */
-  #main{margin-left:250px;flex:1;min-width:0;display:flex;flex-direction:column;min-height:100vh;}
+  #main{margin-left:var(--sidebar-w);flex:1;min-width:0;display:flex;flex-direction:column;min-height:100vh;transition:margin-left .2s ease;}
   header.topbar{
     background:linear-gradient(120deg,var(--brown-1),var(--brown-2) 75%);
     color:#fff;
@@ -145,8 +190,8 @@
   .btn-primary:hover{filter:brightness(0.95);}
   .btn-ghost{background:rgba(255,255,255,.14);color:#fff;}
   .btn-ghost:hover{background:rgba(255,255,255,.22);}
-  .btn-outline{background:#fff;border:1px solid var(--line);color:var(--text);}
-  .btn-outline:hover{background:#f6f7f9;}
+  .btn-outline{background:var(--card);border:1px solid var(--line);color:var(--text);}
+  .btn-outline:hover{filter:brightness(0.97);}
   .btn-outline.on-brown{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.3);}
   .btn-outline.on-brown:hover{background:rgba(255,255,255,.22);}
   .btn-sm{padding:6px 10px;font-size:12px;border-radius:7px;}
@@ -172,18 +217,19 @@
   .stat-card.closed .accent{background:var(--green);}
   .stat-card.tat .accent{background:var(--brown-1);}
 
-  .panel-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
-  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
+  .stat-grid{min-width:0;}
+  .panel-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-bottom:16px;}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;min-width:0;overflow:hidden;}
   .panel h3{margin:0 0 14px;font-size:14.5px;color:var(--navy-dark);font-family:Georgia,serif;}
-  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12.5px;}
-  .bar-row .name{width:150px;flex-shrink:0;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .bar-track{flex:1;background:#eef1f5;border-radius:6px;height:9px;overflow:hidden;}
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12.5px;min-width:0;}
+  .bar-row .name{width:150px;max-width:40%;flex-shrink:0;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bar-track{flex:1;min-width:0;background:var(--track-bg);border-radius:6px;height:9px;overflow:hidden;}
   .bar-fill{height:100%;background:linear-gradient(90deg,var(--brown-1),var(--gold));border-radius:6px;}
   .bar-count{width:28px;text-align:right;font-weight:700;color:var(--navy-dark);flex-shrink:0;}
 
-  .tat-table{width:100%;font-size:12.5px;border-collapse:collapse;}
+  .tat-table{width:100%;font-size:12.5px;border-collapse:collapse;table-layout:fixed;}
   .tat-table th{text-align:left;padding:6px 4px;color:var(--text-muted);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;}
-  .tat-table td{padding:7px 4px;border-top:1px solid var(--line);}
+  .tat-table td{padding:7px 4px;border-top:1px solid var(--line);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .tat-table td.num{text-align:right;}
   .tat-table td.avg{text-align:right;font-weight:700;color:var(--navy-dark);}
 
@@ -196,7 +242,7 @@
   .filter-field label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:700;}
   select, input[type=text], input[type=date], input[type=time], input[type=tel], input[type=email], textarea{
     border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13px;
-    font-family:inherit;color:var(--text);background:#fff;
+    font-family:inherit;color:var(--text);background:var(--input-bg);
   }
   select:focus, input:focus, textarea:focus{outline:2px solid var(--navy-light);outline-offset:1px;}
   .search-wrap{flex:1;min-width:200px;}
@@ -206,14 +252,14 @@
   .table-wrap{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow-x:auto;}
   table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1500px;}
   thead th{
-    background:#f6f8fa;color:var(--text-muted);text-transform:uppercase;font-size:10px;letter-spacing:.05em;
+    background:var(--thead-bg);color:var(--text-muted);text-transform:uppercase;font-size:10px;letter-spacing:.05em;
     padding:11px 10px;text-align:left;border-bottom:1px solid var(--line);cursor:pointer;user-select:none;white-space:nowrap;
   }
   thead th:hover{color:var(--navy-dark);}
   thead th .sort-arrow{margin-left:4px;opacity:.4;font-size:10px;}
   thead th.active-sort .sort-arrow{opacity:1;color:var(--brown-1);}
-  tbody td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap;}
-  tbody tr:hover{background:#fbf9f5;}
+  tbody td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap;color:var(--text);}
+  tbody tr:hover{background:var(--row-hover);}
   tbody tr:last-child td{border-bottom:none;}
   .id-cell{font-weight:700;color:var(--navy-dark);}
   .sub{display:block;font-size:11px;color:var(--text-muted);margin-top:1px;}
@@ -255,9 +301,10 @@
     padding:34px 16px;z-index:100;overflow-y:auto;
   }
   .modal{
-    background:#fff;border-radius:14px;max-width:760px;width:100%;
+    background:var(--card);border-radius:14px;max-width:760px;width:100%;
     box-shadow:0 20px 60px rgba(0,0,0,.3);
   }
+  .modal.modal-sm{max-width:460px;}
   .modal-head{
     padding:18px 24px;border-bottom:1px solid var(--line);
     display:flex;justify-content:space-between;align-items:center;
@@ -287,7 +334,35 @@
   }
 
   ::-webkit-scrollbar{width:9px;height:9px;}
-  ::-webkit-scrollbar-thumb{background:#c9d0da;border-radius:6px;}
+  ::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:6px;}
+
+  /* ---------- Settings modal ---------- */
+  .settings-row{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:14px 0;border-bottom:1px solid var(--line);
+  }
+  .settings-row:last-child{border-bottom:none;}
+  .settings-row .label-block label{font-size:13.5px;font-weight:700;color:var(--text);display:block;}
+  .settings-row .label-block p{margin:2px 0 0;font-size:12px;color:var(--text-muted);}
+  .theme-choice{display:flex;gap:8px;}
+  .theme-choice button{
+    border:1px solid var(--line);background:var(--bg);color:var(--text);
+    border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;gap:6px;
+  }
+  .theme-choice button.active{background:var(--navy-dark);color:var(--gold-soft);border-color:var(--navy-dark);}
+  .switch{position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .switch .slider{
+    position:absolute;cursor:pointer;inset:0;background:#c7ccd3;border-radius:24px;transition:.15s;
+  }
+  .switch .slider:before{
+    position:absolute;content:"";height:18px;width:18px;left:3px;top:3px;
+    background:#fff;border-radius:50%;transition:.15s;
+  }
+  .switch input:checked + .slider{background:var(--brown-1);}
+  .switch input:checked + .slider:before{transform:translateX(18px);}
+  .settings-row input[type=text]{width:220px;}
 
   @media (max-width:980px){
     .stat-grid{grid-template-columns:repeat(3,1fr);}
@@ -309,13 +384,18 @@
 
 <aside id="sidebar">
   <div class="brand">
-    <div class="logo">CFS</div>
-    <div>
-      <h1>CFS Inquiry Tracker</h1>
-      <p>Container Freight Station</p>
+    <div class="logo" id="brand-logo">CFS</div>
+    <div class="brand-text">
+      <h1 id="brand-title">CFS Inquiry Tracker</h1>
+      <p id="brand-sub">Container Freight Station</p>
     </div>
   </div>
   <nav id="nav"></nav>
+  <div id="sidebar-bottom">
+    <div class="nav-item settings-btn" id="settings-btn" title="Settings">
+      <span class="ic">⚙️</span><span class="lbl-text">Settings</span>
+    </div>
+  </div>
   <div class="footer">Data stored in your browser session</div>
 </aside>
 
@@ -362,6 +442,8 @@ let filters = { search:"", status:"", priority:"", channel:"", category:"", depa
 let sortKey = "dateReceived", sortDir = "desc";
 let currentPage = "dashboard";
 let reportsMenuOpen = false;
+let settings = { theme:"light", companyName:"", navCollapsed:false };
+let companyNameSaveTimer = null;
 
 function uid(){ return Math.random().toString(36).slice(2,9); }
 
@@ -417,6 +499,109 @@ function seedData(){
       receivedBy:"Samuel Kiptoo", department:"Customs Liaison", assignedStaff:"Samuel Kiptoo", slaTarget:"2 Hours", status:"Pending",
       escalationLevel:"", resolvedDate:"", resolvedTime:"", resolutionSummary:"", satisfaction:"", createdAt:Date.now()-5400000}
   ];
+}
+
+/* ============================================================
+   SETTINGS (theme, company name, sidebar collapse)
+============================================================ */
+async function loadSettings(){
+  try{
+    const res = await window.storage.get("settings", false);
+    if(res && res.value) settings = { ...settings, ...JSON.parse(res.value) };
+  }catch(e){ /* no saved settings yet */ }
+  applySettings();
+}
+
+async function saveSettings(){
+  try{
+    await window.storage.set("settings", JSON.stringify(settings), false);
+  }catch(e){
+    console.error("Settings storage error", e);
+  }
+}
+
+function applySettings(){
+  document.documentElement.setAttribute("data-theme", settings.theme === "dark" ? "dark" : "light");
+  document.body.classList.toggle("nav-collapsed", !!settings.navCollapsed);
+  document.documentElement.style.setProperty("--sidebar-w", settings.navCollapsed ? "76px" : "250px");
+  const title = document.getElementById("brand-title");
+  if(title) title.textContent = settings.companyName?.trim() ? settings.companyName.trim() : "CFS Inquiry Tracker";
+}
+
+function openSettingsModal(){
+  const root = document.getElementById("modal-root");
+  root.innerHTML = `
+    <div class="modal-overlay" id="settings-overlay">
+      <div class="modal modal-sm">
+        <div class="modal-head">
+          <h3>Settings</h3>
+          <button id="settings-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="settings-row">
+            <div class="label-block">
+              <label>Appearance</label>
+              <p>Switch between light and dark mode</p>
+            </div>
+            <div class="theme-choice">
+              <button type="button" id="theme-light" class="${settings.theme!=="dark"?"active":""}">☀ Light</button>
+              <button type="button" id="theme-dark" class="${settings.theme==="dark"?"active":""}">🌙 Dark</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div class="label-block">
+              <label>Company Name</label>
+              <p>Shown at the top of the sidebar</p>
+            </div>
+            <input type="text" id="settings-company-name" placeholder="e.g. Timeless Elegance" value="${escapeAttr(settings.companyName)}">
+          </div>
+          <div class="settings-row">
+            <div class="label-block">
+              <label>Collapse Navigation</label>
+              <p>Shrink the sidebar to icons only</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="settings-collapse-toggle" ${settings.navCollapsed?"checked":""}>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn btn-primary" id="settings-done">Done</button>
+        </div>
+      </div>
+    </div>
+  `;
+  const overlay = document.getElementById("settings-overlay");
+  const close = ()=>{ root.innerHTML = ""; };
+  document.getElementById("settings-close").onclick = close;
+  document.getElementById("settings-done").onclick = close;
+  overlay.addEventListener("click", (e)=>{ if(e.target.id==="settings-overlay") close(); });
+
+  document.getElementById("theme-light").addEventListener("click", ()=>{
+    settings.theme = "light";
+    applySettings(); saveSettings();
+    document.getElementById("theme-light").classList.add("active");
+    document.getElementById("theme-dark").classList.remove("active");
+  });
+  document.getElementById("theme-dark").addEventListener("click", ()=>{
+    settings.theme = "dark";
+    applySettings(); saveSettings();
+    document.getElementById("theme-dark").classList.add("active");
+    document.getElementById("theme-light").classList.remove("active");
+  });
+  document.getElementById("settings-company-name").addEventListener("input", (e)=>{
+    settings.companyName = e.target.value;
+    applySettings();
+    clearTimeout(companyNameSaveTimer);
+    companyNameSaveTimer = setTimeout(saveSettings, 400);
+  });
+  document.getElementById("settings-collapse-toggle").addEventListener("change", (e)=>{
+    settings.navCollapsed = e.target.checked;
+    reportsMenuOpen = false;
+    applySettings(); saveSettings();
+    renderNav();
+  });
 }
 
 /* ============================================================
@@ -521,14 +706,14 @@ function renderNav(){
   nav.innerHTML = `
     <div class="nav-section-label">Main</div>
     ${NAV_ITEMS.map(item => `
-      <div class="nav-item ${currentPage===item.key?'active':''}" data-page="${item.key}">
-        <span class="ic">${item.icon}</span>${item.label}
+      <div class="nav-item ${currentPage===item.key?'active':''}" data-page="${item.key}" title="${item.label}">
+        <span class="ic">${item.icon}</span><span class="lbl-text">${item.label}</span>
         ${item.key==='inquiries' ? `<span class="badge">${inquiries.length}</span>` : ''}
       </div>
     `).join("")}
     <div class="nav-section-label">Reports</div>
-    <div class="nav-item ${reportsMenuOpen?'open':''}" id="reports-toggle">
-      <span class="ic">📥</span>Download Reports<span class="chev">▾</span>
+    <div class="nav-item ${reportsMenuOpen?'open':''}" id="reports-toggle" title="Download Reports">
+      <span class="ic">📥</span><span class="lbl-text">Download Reports</span><span class="chev">▾</span>
     </div>
     <div class="dropdown-menu ${reportsMenuOpen?'open':''}" id="reports-menu">
       ${REPORT_OPTIONS.map(r=>`<div class="dropdown-item" data-report="${r.key}"><span class="ic">${r.icon}</span>${r.label}</div>`).join("")}
@@ -708,7 +893,6 @@ function getFiltered(){
 }
 
 function renderInquiries(){
-  const list = getFiltered();
   return `
     <div class="filter-bar">
       <div class="filter-field search-wrap">
@@ -740,6 +924,13 @@ function renderInquiries(){
       </div>
     </div>
 
+    <div id="results-region">${renderResultsRegion()}</div>
+  `;
+}
+
+function renderResultsRegion(){
+  const list = getFiltered();
+  return `
     <div class="table-wrap">
       ${list.length===0 ? emptyState() : `
       <table>
@@ -818,39 +1009,52 @@ function attachHandlers(){
       reportFullList(getFiltered(), "Inquiries List Report", "inquiries-list");
     });
 
-    document.getElementById("f-search").addEventListener("input", (e)=>{ filters.search = e.target.value; renderInquiriesOnly(); });
-    document.getElementById("f-status").addEventListener("change", (e)=>{ filters.status = e.target.value; renderInquiriesOnly(); });
-    document.getElementById("f-priority").addEventListener("change", (e)=>{ filters.priority = e.target.value; renderInquiriesOnly(); });
-    document.getElementById("f-channel").addEventListener("change", (e)=>{ filters.channel = e.target.value; renderInquiriesOnly(); });
-    document.getElementById("f-category").addEventListener("change", (e)=>{ filters.category = e.target.value; renderInquiriesOnly(); });
-    document.getElementById("f-department").addEventListener("change", (e)=>{ filters.department = e.target.value; renderInquiriesOnly(); });
+    // Filter controls are rendered once; only the results region below
+    // refreshes on every change, so the search field never loses focus.
+    document.getElementById("f-search").addEventListener("input", (e)=>{ filters.search = e.target.value; refreshResults(); });
+    document.getElementById("f-status").addEventListener("change", (e)=>{ filters.status = e.target.value; refreshResults(); });
+    document.getElementById("f-priority").addEventListener("change", (e)=>{ filters.priority = e.target.value; refreshResults(); });
+    document.getElementById("f-channel").addEventListener("change", (e)=>{ filters.channel = e.target.value; refreshResults(); });
+    document.getElementById("f-category").addEventListener("change", (e)=>{ filters.category = e.target.value; refreshResults(); });
+    document.getElementById("f-department").addEventListener("change", (e)=>{ filters.department = e.target.value; refreshResults(); });
     document.getElementById("clear-filters").addEventListener("click", ()=>{
       filters = { search:"", status:"", priority:"", channel:"", category:"", department:"" };
-      renderInquiriesOnly();
+      document.getElementById("f-search").value = "";
+      document.getElementById("f-status").value = "";
+      document.getElementById("f-priority").value = "";
+      document.getElementById("f-channel").value = "";
+      document.getElementById("f-category").value = "";
+      document.getElementById("f-department").value = "";
+      refreshResults();
     });
 
-    document.querySelectorAll("thead th[data-key]").forEach(th=>{
-      th.addEventListener("click", ()=>{
-        const key = th.dataset.key;
-        if(sortKey === key){ sortDir = sortDir==="asc" ? "desc" : "asc"; }
-        else { sortKey = key; sortDir = "asc"; }
-        renderInquiriesOnly();
-      });
-    });
-
-    document.querySelectorAll('button[data-action="edit"]').forEach(b=>{
-      b.addEventListener("click", ()=> openModal(inquiries.find(i=>i.id===b.dataset.id)));
-    });
-    document.querySelectorAll('button[data-action="delete"]').forEach(b=>{
-      b.addEventListener("click", ()=> confirmDelete(b.dataset.id));
-    });
+    attachResultsHandlers();
   }
 }
 
-function renderInquiriesOnly(){
-  document.getElementById("content").innerHTML = renderInquiries();
-  attachHandlers();
-  renderNav();
+function refreshResults(){
+  const region = document.getElementById("results-region");
+  if(!region) return;
+  region.innerHTML = renderResultsRegion();
+  attachResultsHandlers();
+}
+
+function attachResultsHandlers(){
+  document.querySelectorAll("thead th[data-key]").forEach(th=>{
+    th.addEventListener("click", ()=>{
+      const key = th.dataset.key;
+      if(sortKey === key){ sortDir = sortDir==="asc" ? "desc" : "asc"; }
+      else { sortKey = key; sortDir = "asc"; }
+      refreshResults();
+    });
+  });
+
+  document.querySelectorAll('button[data-action="edit"]').forEach(b=>{
+    b.addEventListener("click", ()=> openModal(inquiries.find(i=>i.id===b.dataset.id)));
+  });
+  document.querySelectorAll('button[data-action="delete"]').forEach(b=>{
+    b.addEventListener("click", ()=> confirmDelete(b.dataset.id));
+  });
 }
 
 function confirmDelete(id){
@@ -1220,7 +1424,8 @@ function reportStatusSummary(){
 /* ============================================================
    INIT
 ============================================================ */
-loadData();
+document.getElementById("settings-btn").addEventListener("click", openSettingsModal);
+loadSettings().then(loadData);
 </script>
 </body>
 </html>
